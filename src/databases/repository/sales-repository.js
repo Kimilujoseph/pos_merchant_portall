@@ -105,15 +105,14 @@ class Sales {
       //console.log("sales result found", results);
       const withRelations = await Promise.all(
         results.map(async (sale) => {
+          //console.log("sale found", sale);
           const [product, shop, seller, category] = await Promise.all([
             this.getProductDetails(salesTable, sale.productID),
             prisma.shops.findUnique({ where: { id: sale.shopID } }),
             prisma.actors.findUnique({ where: { id: sale.sellerId } }),
-            salesTable === "mobilesales"
-              ? prisma.categories.findUnique({
-                  where: { id: sale.categoryId },
-                })
-              : null,
+            prisma.categories.findUnique({
+              where: { id: sale.categoryId },
+            }),
           ]);
 
           return {
@@ -126,6 +125,8 @@ class Sales {
           };
         })
       );
+
+      //console.log("withrelationnn", withRelations);
 
       return { generalReport: withRelations };
     } catch (err) {

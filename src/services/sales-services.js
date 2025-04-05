@@ -343,7 +343,7 @@ class salesmanagment {
       );
       //console.log("combinedSales", combinedSales);
       const transformedSales = combinedSales.map((sale) => ({
-        soldprice: sale._sum.soldPrice,
+        soldprice: parseInt(sale._sum.soldPrice),
         commission: sale._sum.commission,
         totalprofit: sale._sum.profit,
         totaltransaction: sale._count._all,
@@ -376,7 +376,7 @@ class salesmanagment {
       }));
 
       //console.log("transformedSales", transformedSales);
-      // Rest of your existing processing logic
+
       const analytics = await this.analyseSalesMetric(transformedSales);
       const finance = transformedSales.filter(
         (sale) =>
@@ -406,9 +406,9 @@ class salesmanagment {
         (acc, sale) => acc + sale._sum.commission,
         0
       );
-      //console.log("$%@@@totalcommission", totalCommission)
+
       const paginatedSales = transformedSales.slice(skip, skip + limit);
-      console.log("#$#%$", paginatedSales);
+      //console.log("#$#%$", paginatedSales);
       return [
         {
           sales: {
@@ -768,6 +768,7 @@ class salesmanagment {
       };
 
       const transformedSales = transformSales(paginatedSales);
+      console.log("transformed sales", transformSales);
 
       // Calculate totals
       const totalSales = fullfilledSales.reduce(

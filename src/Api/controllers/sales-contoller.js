@@ -25,7 +25,7 @@ const makesales = async (req, res) => {
         const { items, ...salesDetail } = sale;
         //console.log("@#@#$", sale);
         return items.map((item) => {
-          const salesDetails = {                                                                                                                                                                                                             
+          const salesDetails = {
             ...salesDetail,
             soldprice: item.soldprice,
             soldUnits: item.soldUnits,
@@ -118,7 +118,7 @@ const getgeneralsales = async (req, res) => {
     let startDate;
     let endDate;
     const user = req.user;
-    if (user.role !== "manager" && user.role !== "superUser") {
+    if (user.role !== "manager" && user.role !== "superuser") {
       throw new APIError("not authorised", 403, "not allowed to view sales");
     }
     const getStartdate = (date) => {
@@ -222,7 +222,7 @@ const getCategorySales = async (req, res) => {
     const period = req.query.period || "year";
     const categoryId = parseInt(req.params.categoryId, 10);
     const user = req.user;
-    if (user.role !== "manager" && user.role !== "superUser") {
+    if (user.role !== "manager" && user.role !== "superuser") {
       throw new APIError("not authorised", 403, "not allowed to view sales");
     }
 
@@ -304,7 +304,7 @@ const getShopSales = async (req, res) => {
     let startdate;
     let endDate;
     const user = req.user;
-    if (user.role !== "manager" && user.role !== "superUser") {
+    if (user.role !== "manager" && user.role !== "superuser") {
       throw new APIError("not authorised", 403, "not allowed to view sales");
     }
     const getStartDate = (date) => {
@@ -395,7 +395,7 @@ const getUserSales = async (req, res) => {
     if (
       user.id !== userId &&
       user.role !== "manager" &&
-      user.role !== "superUser"
+      user.role !== "superuser"
     ) {
       throw new APIError("not authorised", 403, "not allowed to view sales");
     }

@@ -9,6 +9,7 @@ const getSpecificShop = async (req, res, next) => {
     const getSpecificShop = await ShopManagementSystem.findSpecificShop({
       name,
     });
+
     return res.status(200).json({ message: "success", shop: getSpecificShop });
   } catch (err) {
     if (err instanceof APIError) {

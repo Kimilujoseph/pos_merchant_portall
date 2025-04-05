@@ -59,9 +59,9 @@ class ShopmanagementService {
           phone: seller.actors.phone,
           fromDate: seller.fromDate,
           toDate: seller.toDate,
-          status: seller.status
+          status: seller.status,
         }));
-      console.log(shopFound.assignment)
+      console.log(shopFound.assignment);
 
       const transformAccessory = (item) => ({
         quantity: item.quantity,
@@ -70,6 +70,7 @@ class ShopmanagementService {
         transferId: item.transferId,
         createdAt: item.createdAt,
         updatedAt: item.updatedAt,
+        accessory: item.id,
         stock: {
           id: item.accessoryID,
           stockStatus: item.accessories.stockStatus,
@@ -88,7 +89,6 @@ class ShopmanagementService {
           itemType: item.accessories.categories.itemType,
         },
         quantity: item.quantity,
-
       });
 
       const transformPhone = (item) => ({
@@ -114,13 +114,14 @@ class ShopmanagementService {
           minPrice: item.mobiles.categories.minPrice,
           maxPrice: item.mobiles.categories.maxPrice,
           itemType: item.mobiles.categories.itemType,
-
         },
         quantity: item.quantity,
       });
 
       const newAccessory = shopFound.accessoryItems
-        .filter((item) => item.status === "pending" && item.accessoryID !== null)
+        .filter(
+          (item) => item.status === "pending" && item.accessoryID !== null
+        )
         .map(transformAccessory);
 
       const newPhoneItem = shopFound.mobileItems
@@ -130,7 +131,7 @@ class ShopmanagementService {
       const stockItems = shopFound.accessoryItems
         .filter((item) => item.status === "confirmed" && item.quantity > 0)
         .map(transformAccessory);
-
+      console.log("@#", stockItems);
       const phoneItems = shopFound.mobileItems
         .filter((item) => item.status === "confirmed" && item.quantity !== 0)
         .map(transformPhone);
@@ -152,7 +153,6 @@ class ShopmanagementService {
       };
 
       return {
-
         filteredShop: filteredShop,
       };
     } catch (error) {
@@ -163,7 +163,6 @@ class ShopmanagementService {
       );
     }
   }
-
 
   async findAllShop() {
     try {
@@ -302,12 +301,13 @@ class ShopmanagementService {
       }
       const user = await this.user.findUserByname({ name: name });
       const sellerId = user.id;
-      const type = "assigned"
+      const type = "assigned";
 
       const shopId = shop.id;
-      console.log(shop.assignment)
+      console.log(shop.assignment);
       const sellerAssigned = shop.assignment.some(
-        (assignment) => assignment.actors.id === sellerId && assignment.status === "assigned"
+        (assignment) =>
+          assignment.actors.id === sellerId && assignment.status === "assigned"
       );
       if (sellerAssigned) {
         throw new APIError(
@@ -318,13 +318,18 @@ class ShopmanagementService {
       }
 
       //commit the assignment
-      const assignment = await this.user.updateUserAssignment({ sellerId, shopId, fromDate, toDate, type })
+      const assignment = await this.user.updateUserAssignment({
+        sellerId,
+        shopId,
+        fromDate,
+        toDate,
+        type,
+      });
       return {
         message: "seller assigned successfully",
-
       };
     } catch (err) {
-      console.log("service error", err)
+      console.log("service error", err);
       if (err instanceof APIError) {
         throw err;
       }
@@ -340,8 +345,7 @@ class ShopmanagementService {
 
   async removeassignment({ assignmentId }) {
     try {
-
-      const assignment = await this.user.removeUserAssignment(assignmentId)
+      const assignment = await this.user.removeUserAssignment(assignmentId);
 
       return { message: "success" };
     } catch (err) {
@@ -359,9 +363,13 @@ class ShopmanagementService {
     try {
       const products = await this.repository.searchProductName(
         shopName,
-        productName,
+        productName
       );
-      if (!products.phoneItems.length && !products.stockItems.length && !products.matchingImei.length) {
+      if (
+        !products.phoneItems.length &&
+        !products.stockItems.length &&
+        !products.matchingImei.length
+      ) {
         throw new APIError(
           "No products found",
           STATUS_CODE.NOT_FOUND,
