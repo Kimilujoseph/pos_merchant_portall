@@ -326,97 +326,72 @@ class salesmanagment {
 
   async generategeneralsales({ startDate, endDate, page, limit }) {
     try {
-      const salesTables = ["mobilesales", "accessorysales"];
+      const SALES_TABLE = ["mobilesales", "accessorysales"];
       const skip = (page - 1) * limit;
 
-      const generalsalespromises = salesTables.map(async (table) => {
-        return this.sales.findSales({
-          salesTable: table,
-          startDate,
-          endDate,
-        });
-      });
-
-      const generalSalesResolve = await Promise.all(generalsalespromises);
-      const combinedSales = generalSalesResolve.flatMap(
-        (result) => result.generalReport
+      const salesResult = await Promise.all(
+        SALES_TABLE.map(async (table) => {
+          return this.sales.findSales({
+            salesTable: table,
+            startDate,
+            endDate,
+          });
+        })
       );
-      //console.log("combinedSales", combinedSales);
-      const transformedSales = combinedSales.map((sale) => ({
-        soldprice: parseInt(sale._sum.soldPrice),
-        commission: sale._sum.commission,
-        totalprofit: sale._sum.profit,
-        totaltransaction: sale._count._all,
-        productDetails: {
-          productID: sale.productDetails?.id,
-          batchNumber: sale.productDetails?.batchNumber,
-          productCost: sale.productDetails?.productCost,
-          productType: sale.productDetails?.itemType || "accessory",
-        },
-        categoryDetails: {
-          categoryId: sale.categoryDetails?.id,
-          category: sale.categoryDetails?.itemType || "Accessory",
-          itemName: sale.categoryDetails?.itemName,
-          itemModel: sale.categoryDetails?.itemModel,
-          brand: sale.categoryDetails?.brand,
-        },
-        shopDetails: {
-          id: sale.shopDetails?.id,
-          name: sale.shopDetails?.shopName,
-          address: sale.shopDetails?.address,
-        },
-        sellerDetails: {
-          name: sale.sellerDetails?.name,
-          id: sale.sellerDetails?.id,
-        },
-        saleType:
-          sale.financeDetails.financeStatus !== "N/A" ? "finance" : "direct",
-        financeDetails: sale.financeDetails,
-        createdAt: sale.createdAt,
-      }));
 
-      //console.log("transformedSales", transformedSales);
-
-      const analytics = await this.analyseSalesMetric(transformedSales);
-      const finance = transformedSales.filter(
-        (sale) =>
-          sale.saleType === "finance" &&
-          sale.financeDetails.financeStatus === "pending"
-      );
-      const fullfilledSales = transformedSales.filter((sale) => {
-        return (
-          sale.saleType !== "finance" ||
-          sale.financeDetails.financeStatus !== "pending"
+      if (!salesResult.some((result) => result.generalReport?.length)) {
+        throw new APIError(
+          "sales not found",
+          STATUS_CODE.NOT_FOUND,
+          "sales not found"
         );
-      });
+      }
 
-      const financeSales = finance.reduce(
-        (acc, sale) => acc + sale.financeDetails.financeAmount,
-        0
-      );
-      const totalProfit = fullfilledSales.reduce(
-        (acc, sale) => acc + sale.totalprofit,
-        0
-      );
-      const totalSales = combinedSales.reduce(
-        (acc, sale) => acc + sale._sum.soldPrice,
-        0
-      );
-      const totalCommission = combinedSales.reduce(
-        (acc, sale) => acc + sale._sum.commission,
-        0
-      );
+      const [transformedSales, total] = salesResult
+        .flatMap((result) => result.generalReport)
+        .reduce(
+          ([sales, acc], sale) => {
+            const transformed = this.transformSale(sale);
+            sales.push(transformed);
+            acc.totalSales += Number(sale._sum.soldPrice);
+            acc.totalCommission += sale._sum.commission;
+            acc.totalProfit += transformed.totalprofit;
 
-      const paginatedSales = transformedSales.slice(skip, skip + limit);
-      //console.log("#$#%$", paginatedSales);
+            if (
+              transformed.saleType === "finance" &&
+              transformed.financeDetails.financeStatus === "pending"
+            ) {
+              acc.financeSales += transformed.financeDetails.financeAmount;
+            }
+
+            return [sales, acc];
+          },
+          [
+            [],
+            {
+              totalSales: 0,
+              totalCommission: 0,
+              totalProfit: 0,
+              financeSales: 0,
+            },
+          ]
+        );
+
+      //console.log("transformed", transformedSales);
+
+      const [analytics, paginatedSales] = await Promise.all([
+        this.analyseSalesMetric(transformedSales),
+        Promise.resolve(transformedSales.slice(skip, skip + limit)),
+      ]);
+
       return [
         {
           sales: {
             sales: paginatedSales,
-            totalSales,
-            totalCommission,
-            totalProfit,
-            financeSales: financeSales,
+            totalSales: total.totalSales,
+            totalCommission: total.totalCommission,
+            totalProfit: total.totalProfit,
+            financeSales: total.financeSales,
             totalPages: Math.ceil(transformedSales.length / limit),
             currentPage: page,
           },
@@ -861,6 +836,70 @@ class salesmanagment {
       }
       throw new Error(`Error in service layer: ${err.message}`);
     }
+  }
+
+  transformSale(sale) {
+    const financeStatus = sale.financeDetails.financeStatus;
+    const isFinance = financeStatus !== "N/A";
+    return {
+      soldprice: parseInt(sale._sum.soldPrice),
+      commission: sale._sum.commission,
+      totalprofit: sale._sum.profit,
+      totaltransaction: sale._count._all,
+      productDetails: this.normalizedProduct(sale.productDetails),
+      categoryDetails: this.normalizedCategoryDetails(sale.categoryDetails),
+      shopDetails: this.normalizedShopDetails(sale.shopDetails),
+      sellerDetails: {
+        name: sale.sellerDetails?.name,
+        id: sale.sellerDetails?.id,
+      },
+      saleType: isFinance ? "finance" : "direct",
+      financeDetails: sale.financeDetails,
+      createdAt: sale.createdAt,
+    };
+  }
+
+  normalizedProduct(details) {
+    return {
+      productID: details?.id,
+      batchNumber: details?.batchNumber,
+      productCost: details?.productCost,
+      productType: details?.productType,
+    };
+  }
+  normalizedCategoryDetails(details) {
+    return {
+      categoryId: details?.id,
+      category: details?.itemType || "accessory",
+      itemName: details?.itemName,
+      itemModel: details?.itemModel,
+      brand: details?.brand,
+    };
+  }
+  normalizedShopDetails(details) {
+    return details
+      ? {
+          id: details.id,
+          name: details.shopName,
+          address: details.address,
+        }
+      : null;
+  }
+  normalizedSellerDetails(details) {
+    return details
+      ? {
+          id: details.id,
+          name: details.sellerName,
+        }
+      : null;
+  }
+  handleServiceError(err) {
+    if (err instanceof APIError) return err;
+    return new APIError(
+      "internal_error",
+      STATUS_CODE.INTERNAL_ERROR,
+      err.message || "Internal server error"
+    );
   }
 }
 
