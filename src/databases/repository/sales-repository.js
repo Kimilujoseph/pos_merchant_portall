@@ -102,31 +102,43 @@ class Sales {
           createdAt: "desc",
         },
       });
-      //console.log("sales result found", results);
-      const withRelations = await Promise.all(
-        results.map(async (sale) => {
-          //console.log("sale found", sale);
-          const [product, shop, seller, category] = await Promise.all([
-            this.getProductDetails(salesTable, sale.productID),
-            prisma.shops.findUnique({ where: { id: sale.shopID } }),
-            prisma.actors.findUnique({ where: { id: sale.sellerId } }),
-            prisma.categories.findUnique({
-              where: { id: sale.categoryId },
-            }),
-          ]);
 
-          return {
-            ...sale,
-            productDetails: product,
-            shopDetails: shop,
-            sellerDetails: seller,
-            categoryDetails: category,
-            financeDetails: this.mapFinanceDetails(sale),
-          };
-        })
-      );
+      //lets create an object of unique so we can collect the data in batches
+      let uniqueIds = {
+        //with the new Set instatiation we won't have repeating values
+        productID: results ? [...new Set(results.map((s) => s.productID))] : [],
+        sellerId: results ? [...new Set(results.map((s) => s.sellerId))] : [],
+        categoryId: results
+          ? [...new Set(results.map((s) => s.categoryId))]
+          : [],
+        shopId: results ? [...new Set(results.map((r) => r.shopID))] : [],
+      };
 
-      //console.log("withrelationnn", withRelations);
+      //lets have a batch fetching of items
+
+      const [products, shops, sellers, category] = await Promise.all([
+        this.getProductDetails(salesTable, uniqueIds.productID),
+        prisma.shops.findMany({ where: { id: { in: uniqueIds.shopId } } }),
+        prisma.actors.findMany({ where: { id: { in: uniqueIds.sellerId } } }),
+        prisma.categories.findMany({
+          where: { id: { in: uniqueIds.categoryId } },
+        }),
+      ]);
+
+      //create a  Map look up which improve effeciency to O(1);
+      const productMap = new Map(products.map((p) => [p.id, p]));
+      const shopMap = new Map(shops.map((s) => [s.id, s]));
+      const sellerMap = new Map(sellers.map((s) => [s.id, s]));
+      const categoryMap = new Map(category.map((c) => [c.id, c]));
+
+      const withRelations = results.map((sale) => ({
+        ...sale,
+        productDetails: productMap.get(sale.productID) || null,
+        shopDetails: shopMap.get(sale.shopID) || null,
+        sellerDetails: sellerMap.get(sale.sellerId) || null,
+        categoryDetails: categoryMap.get(sale.categoryId) || null,
+        financeDetails: this.mapFinanceDetails(sale),
+      }));
 
       return { generalReport: withRelations };
     } catch (err) {
@@ -140,13 +152,20 @@ class Sales {
   }
 
   async getProductDetails(salesTable, productID) {
+    if (!Array.isArray(productID)) {
+      throw new APIError(
+        "internal server error",
+        STATUS_CODE.INTERNAL_ERROR,
+        "Invalid product ID"
+      );
+    }
     return salesTable === "mobilesales"
-      ? prisma.mobiles.findUnique({
-          where: { id: productID },
+      ? prisma.mobiles.findMany({
+          where: { id: { in: productID } },
           include: { categories: true },
         })
-      : prisma.accessories.findUnique({
-          where: { id: productID },
+      : prisma.accessories.findMany({
+          where: { id: { in: productID } },
         });
   }
   mapFinanceDetails(sale) {
@@ -156,7 +175,23 @@ class Sales {
       financer: sale.financer || "N/A",
     };
   }
-
+  // In your repository
+  async findCategorySales({ categoryId, startDate, endDate }) {
+    return prisma.sales.findMany({
+      where: {
+        categoryId,
+        createdAt: { gte: startDate, lte: endDate },
+        OR: [
+          { saleType: "direct" },
+          {
+            saleType: "finance",
+            financeStatus: { not: "pending" },
+          },
+        ],
+      },
+      include: { categoryId: true },
+    });
+  }
   async payCommission(salesId, updatedData) {
     return await salesDatabase.findByIdAndUpdate(salesId, updatedData, {
       new: true,

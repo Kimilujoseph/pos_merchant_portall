@@ -1,5 +1,7 @@
 import { parse } from "dotenv";
 import { salesmanagment } from "../../services/sales-services.js";
+import { accessorySales } from "../../services/accessorysales-service.js";
+import { mobileSales } from "../../services/mobileSales-services.js";
 import { APIError, STATUS_CODE } from "../../Utils/app-error.js";
 import moment from "moment";
 import {
@@ -8,6 +10,8 @@ import {
 } from "../../services/pdfGenerator.js";
 
 const salesService = new salesmanagment();
+const mobileSalesService = new mobileSales();
+const accessorySalesService = new accessorySales();
 
 const makesales = async (req, res) => {
   try {
@@ -53,7 +57,7 @@ const makesales = async (req, res) => {
     );
     const processphonesales =
       phonesales.length > 0
-        ? processSales(phonesales, salesService.MobileSales)
+        ? processSales(phonesales, mobileSalesService.MobileSales)
         : [];
 
     // Process accessory sales
@@ -62,7 +66,7 @@ const makesales = async (req, res) => {
     );
     const processaccessoriesales =
       accessoriesSales.length > 0
-        ? processSales(accessoriesSales, salesService.Accessorysales)
+        ? processSales(accessoriesSales, accessorySalesService.Accessorysales)
         : [];
 
     // Use promises to wait for all sales to be processed
