@@ -19,7 +19,7 @@ class salesmanagment {
     try {
       const SALES_TABLE = ["mobilesales", "accessorysales"];
       const skip = (page - 1) * limit;
-
+      console.log(page, limit);
       const salesResult = await Promise.all(
         SALES_TABLE.map(async (table) => {
           return this.sales.findSales({
@@ -68,7 +68,7 @@ class salesmanagment {
           ]
         );
 
-      //console.log("transformed", transformedSales);
+      //sconsole.log("transformed", transformedSales);
 
       const [analytics, paginatedSales] = await Promise.all([
         this.analyseSalesMetric(transformedSales),

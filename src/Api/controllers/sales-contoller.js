@@ -2,6 +2,10 @@ import { parse } from "dotenv";
 import { salesmanagment } from "../../services/sales-services.js";
 import { accessorySales } from "../../services/accessorysales-service.js";
 import { mobileSales } from "../../services/mobileSales-services.js";
+import { transformSales } from "../../helpers/transformsales.js";
+import { getDateRange } from "../../helpers/dateUtils.js";
+import { checkRole } from "../../helpers/authorisation.js";
+import { handleError, handleResponse } from "../../helpers/responseUtils.js";
 import { APIError, STATUS_CODE } from "../../Utils/app-error.js";
 import moment from "moment";
 import {
@@ -16,8 +20,6 @@ const accessorySalesService = new accessorySales();
 const makesales = async (req, res) => {
   try {
     const { bulksales, customerdetails, shopName } = req.body;
-    console.log("Request:", req.body);
-    console.log("EOL");
     const user = req.user;
     const shopname = req.params.name;
 
@@ -116,107 +118,61 @@ const makesales = async (req, res) => {
 
 const getgeneralsales = async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const period = req.query.period || "year";
-    let startDate;
-    let endDate;
-    const user = req.user;
-    if (user.role !== "manager" && user.role !== "superuser") {
-      throw new APIError("not authorised", 403, "not allowed to view sales");
-    }
-    const getStartdate = (date) => {
-      const start = new Date(date);
-      start.setHours(0, 0, 0, 0);
-      return start;
-    };
+    const { page, limit, date } = req.query;
 
-    const getEndDate = (date) => {
-      const end = new Date(date);
-      end.setHours(23, 59, 59, 999);
-      return end;
-    };
-    if (req.query.date) {
-      const date = req.query.date;
-      startDate = date ? getStartdate(date) : getStartdate(new Date());
-      endDate = date ? getEndDate(date) : getEndDate(new Date());
-    } else {
-      const now = moment();
-      switch (period) {
-        case "week":
-          startDate = now.startOf("week").toDate();
-          endDate = now.endOf("week").toDate();
-          break;
-        case "month":
-          startDate = now.startOf("month").toDate();
-          endDate = now.endOf("month").toDate();
-          break;
-        case "year":
-          startDate = now.startOf("year").toDate();
-          endDate = now.endOf("year").toDate();
-          break;
-        default:
-          startDate = now.startOf("day").toDate();
-          endDate = now.endOf("day").toDate();
-      }
+    const period = req.query.period || "year";
+
+    if (!checkRole(req.user.role, ["manager", "superuser"])) {
+      throw new APIError(
+        "not authorised",
+        STATUS_CODE.UNAUTHORIZED,
+        "not authorised to view the page"
+      );
     }
+    const [startDate, endDate] = getDateRange(period, date).map((m) =>
+      m.toDate()
+    );
+    console.log("$$$#$$$#$$$#", startDate, endDate);
     const generalSales = await salesService.generategeneralsales({
       startDate,
       endDate,
-      limit,
-      page,
+      limit: Math.min(100, parseInt(limit)) || 1000,
+      page: Math.max(1, parseInt(page)) || 1,
     });
+    if (!generalSales) {
+      throw new APIError(
+        "No sales found",
+        STATUS_CODE.NOT_FOUND,
+        "No sales found for the given period"
+      );
+    }
     const { sales, analytics } = generalSales[0];
-    const transformSales = (salesTransformed) => {
-      //.log("@#@#$", salesTransformed)
-      return salesTransformed.sales.map((sale) => ({
-        soldprice: sale.soldprice,
-        netprofit: sale.totalprofit,
-        commission: sale.commission,
-        productcost: sale.productDetails.productCost,
-        productmodel: sale.categoryDetails.itemModel,
-        productname: sale.categoryDetails.itemName,
-        totalnetprice: sale.soldprice,
-        totalsoldunits: sale.totaltransaction,
-        totaltransaction: sale.totaltransaction,
-        _id: {
-          productId: sale.productDetails.productID,
-          sellerId: sale.sellerDetails.id,
-          shopId: sale.shopDetails.id,
-        },
-        financeDetails: sale.financeDetails,
-        CategoryId: sale.categoryDetails.categoryId,
-        createdAt: sale.createdAt,
-        batchNumber: sale.productDetails.batchNumber,
-        category: sale.productDetails.productType,
-        sellername: sale.sellerDetails.name,
-        shopname: sale.shopDetails.name,
-      }));
-    };
+    //console.log("@#", sales);
     const transformedSales = transformSales(sales);
-    //console.log("##$%#%$^", sales)
-    res.status(200).json({
-      success: true,
+    console.log("##$%#%$^", transformedSales);
+    // 2. Refactored Controller Usage
+    handleResponse({
+      res,
       message: "General sales data retrieved successfully",
       data: {
         analytics: analytics || {},
         sales: transformedSales || [],
         salesPerMonth: sales.salesPerMonth || [],
-        totalSales: sales.totalSales || 0,
-        totalProfit: sales.totalProfit || 0,
-        totalCommission: sales.totalCommission,
-        totalfinanceSalesPending: sales.financeSales || 0,
-        totalPages: sales.totalPages || 1,
-        currentPage: sales.currentPage || 1,
+        totals: {
+          sales: sales.totalSales || 0,
+          profit: sales.totalProfit || 0,
+          commission: sales.totalCommission || 0,
+          financePending: sales.financeSales || 0,
+        },
+        pagination: {
+          totalPages: sales.totalPages || 1,
+          currentPage: sales.currentPage || 1,
+          itemsPerPage: limit || 10,
+        },
       },
     });
   } catch (err) {
-    console.log(err);
-    if (err instanceof APIError) {
-      res.status(err.statusCode).json({ error: err.message });
-    } else {
-      res.status(500).json({ error: "Internal server error" });
-    }
+    handleError(res, err);
   }
 };
 
@@ -305,67 +261,36 @@ const getCategorySales = async (req, res) => {
 
 const getShopSales = async (req, res) => {
   try {
-    let startdate;
-    let endDate;
-    const user = req.user;
-    if (user.role !== "manager" && user.role !== "superuser") {
-      throw new APIError("not authorised", 403, "not allowed to view sales");
-    }
-    const getStartDate = (date) => {
-      let start = new Date(date);
-      start.setHours(0, 0, 0, 0);
-      return start;
-    };
-
-    const endofDay = (date) => {
-      let end = new Date(date);
-      end.setHours(23, 59, 59, 999);
-      return end;
-    };
+    const { date, page, limit } = req.query;
     const period = req.query.period || "year";
-    if (req.query.date) {
-      const date = req.query.date;
-      startdate = date ? getStartDate(date) : getStartDate(new Date());
-      endDate = date ? endofDay(date) : endofDay(new Date());
-    } else {
-      const now = moment();
-
-      switch (period) {
-        case "week":
-          startdate = now.startOf("week").toDate();
-          endDate = now.endOf("week").toDate();
-          break;
-        case "month":
-          startdate = now.startOf("month").toDate();
-          endDate = now.endOf("month").toDate();
-          break;
-        case "year":
-          startdate = now.startOf("year").toDate();
-          endDate = now.endOf("year").toDate();
-          break;
-        default:
-          startdate = now.startOf("day").toDate();
-          endDate = now.endOf("day").toDate();
-      }
+    if (!["manager", "superuser"].includes(req.user.role)) {
+      throw new APIError(
+        "not authorised",
+        STATUS_CODE.UNAUTHORIZED,
+        "not allowed to view sales"
+      );
     }
+    const [startdate, endDate] = date
+      ? [moment(date).startOf("day").toDate, moment(date).endOf("day").toDate]
+      : getDateRange(period).map((m) => m.toDate);
     const shopId = parseInt(req.params.shopId, 10);
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
     const report = await salesService.generateShopSales({
       shopId: shopId,
       startDate: startdate,
       endDate: endDate,
-      page,
-      limit,
+      page: Math.max(1, parseInt(page)),
+      limit: Math.min(100, parseInt(limit)),
     });
     if (!report) {
       res.status(404).json({ message: "Shop sales not found" });
       return;
     }
     const { analytics, sales } = report;
-    res.status(200).json({
+    res.status(report ? 200 : 404).json({
       success: true,
-      message: "General sales data retrieved successfully",
+      message: report
+        ? "General sales data retrieved successfully"
+        : "shop sales not found",
       data: {
         analytics: analytics || {},
         sales: sales.sales || [],
