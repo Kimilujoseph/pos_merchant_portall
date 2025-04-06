@@ -337,18 +337,26 @@ const getUserSales = async (req, res) => {
     });
     console.log("report", report);
     const { sales, analytics } = report;
-    res.status(200).json({
-      success: true,
+    const transformedSales = transformSales(sales);
+    // console.log("##$%#%$^", transformedSales);
+    handleResponse({
+      res,
       message: "General sales data retrieved successfully",
       data: {
         analytics: analytics || {},
-        sales: sales.sales || [],
-        totalSales: sales.totalSales || 0,
-        totalCommission: sales.totalCommission || 0,
-        totalProfit: sales.totalProfit || 0,
-        totalfinanceSalesPending: sales.financeSales || 0,
-        totalPages: sales.totalPages || 1,
-        currentPage: sales.currentPage || 1,
+        sales: transformedSales || [],
+        salesPerMonth: sales.salesPerMonth || [],
+        totals: {
+          sales: sales.totalSales || 0,
+          profit: sales.totalProfit || 0,
+          commission: sales.totalCommission || 0,
+          financePending: sales.financeSales || 0,
+        },
+        pagination: {
+          totalPages: sales.totalPages || 1,
+          currentPage: sales.currentPage || 1,
+          itemsPerPage: limit || 10,
+        },
       },
     });
   } catch (err) {
