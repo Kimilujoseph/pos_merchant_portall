@@ -132,7 +132,7 @@ const getgeneralsales = async (req, res) => {
     const [startDate, endDate] = getDateRange(period, date).map((m) =>
       m.toDate()
     );
-    console.log("$$$#$$$#$$$#", startDate, endDate);
+
     const generalSales = await salesService.generategeneralsales({
       startDate,
       endDate,
@@ -149,8 +149,7 @@ const getgeneralsales = async (req, res) => {
     const { sales, analytics } = generalSales[0];
     //console.log("@#", sales);
     const transformedSales = transformSales(sales);
-    console.log("##$%#%$^", transformedSales);
-    // 2. Refactored Controller Usage
+    // console.log("##$%#%$^", transformedSales);
     handleResponse({
       res,
       message: "General sales data retrieved successfully",
@@ -314,57 +313,21 @@ const getShopSales = async (req, res) => {
 
 const getUserSales = async (req, res) => {
   try {
-    let startDate;
-    let endDate;
     const user = req.user;
     const page = parseInt(req.query.page) || 1;
+    const date = req.query.date;
+    const period = req.query.period || "year";
     const limit = parseInt(req.query.limit) || 10;
-    console.log("#@#", user);
     const userId = parseInt(req.params.userId, 10);
     if (
-      user.id !== userId &&
-      user.role !== "manager" &&
-      user.role !== "superuser"
+      !checkRole(req.user.role, ["manager", "superuser"]) &&
+      user.id !== userId
     ) {
       throw new APIError("not authorised", 403, "not allowed to view sales");
     }
-    const getStartDate = (date) => {
-      let start = new Date(date);
-      start.setHours(0, 0, 0, 0);
-      return start;
-    };
-
-    const endofDay = (date) => {
-      let end = new Date(date);
-      end.setHours(23, 59, 59, 999);
-      return end;
-    };
-    const period = req.query.period || "year";
-    if (req.query.date) {
-      const date = req.query.date;
-      startDate = date ? getStartDate(date) : getStartDate(new Date());
-      endDate = date ? endofDay(date) : endofDay(new Date());
-    } else {
-      const now = moment();
-
-      switch (period) {
-        case "week":
-          startDate = now.startOf("week").toDate();
-          endDate = now.endOf("week").toDate();
-          break;
-        case "month":
-          startDate = now.startOf("month").toDate();
-          endDate = now.endOf("month").toDate();
-          break;
-        case "year":
-          startDate = now.startOf("year").toDate();
-          endDate = now.endOf("year").toDate();
-          break;
-        default:
-          startDate = now.startOf("day").toDate();
-          endDate = now.endOf("day").toDate();
-      }
-    }
+    const [startDate, endDate] = getDateRange(period, date).map((m) =>
+      m.toDate()
+    );
     const report = await salesService.getUserSales({
       userId,
       startDate,

@@ -380,99 +380,56 @@ class salesmanagment {
   async getUserSales(salesDetails) {
     try {
       const { userId, startDate, endDate, page, limit } = salesDetails;
-      const skip = (page - 1) * limit;
-
-      // Fetch general sales data
-      const generalSalesData = await this.generategeneralsales({
-        startDate,
-        endDate,
-        page,
-        limit,
-      });
-
-      const allSales = generalSalesData[0].sales.sales;
-
-      // Filter sales for the specific user
-      const fullfilledSales = allSales.filter(
-        (sale) => sale.sellerDetails.id === userId
-      );
-
-      // Filter out pending finance sales
-      const filteredSales = fullfilledSales.filter((sale) => {
-        return (
-          sale.saleType !== "finance" ||
-          sale.financeDetails.financeStatus !== "pending"
-        );
-      });
-
-      // Paginate the sales
-      const paginatedSales = fullfilledSales.slice(skip, skip + limit);
-
-      // Transform sales data to match the previous structure
-      const transformSales = (sales) => {
-        return sales.map((sale) => ({
-          soldprice: sale.soldprice,
-          netprofit: sale.totalprofit,
-          commission: sale.commission,
-          productcost: sale.productDetails.productCost,
-          productmodel: sale.categoryDetails.itemModel,
-          productname: sale.categoryDetails.itemName,
-          totalnetprice: sale.soldprice,
-          totalsoldunits: sale.totaltransaction,
-          totaltransaction: sale.totaltransaction,
-          _id: {
-            productId: sale.productDetails.productID,
-            sellerId: sale.sellerDetails.id,
-            shopId: sale.shopDetails.id,
-          },
-          financeDetails: sale.financeDetails,
-          CategoryId: sale.categoryDetails.categoryId,
-          createdAt: sale.createdAt,
-          batchNumber: sale.productDetails.batchNumber,
-          category: sale.productDetails.productType,
-        }));
-      };
-
-      const transformedSales = transformSales(paginatedSales);
-      console.log("transformed sales", transformSales);
-
-      // Calculate totals
-      const totalSales = fullfilledSales.reduce(
-        (acc, sale) => acc + sale.soldprice,
-        0
-      );
-      const totalCommission = fullfilledSales.reduce(
-        (acc, sale) => acc + sale.commission,
-        0
-      );
-      const totalProfit = filteredSales.reduce(
-        (acc, sale) => acc + sale.totalprofit,
-        0
-      );
-      const financeSales = fullfilledSales
-        .filter(
-          (sale) =>
-            sale.saleType === "finance" &&
-            sale.financeDetails.financeStatus === "pending"
+      const salesTables = ["mobilesales", "accessorysales"];
+      const salesResults = await Promise.all(
+        salesTables.map((table) =>
+          this.sales.findUserSales({
+            salesTable: table,
+            userId,
+            startDate,
+            endDate,
+            page,
+            limit,
+          })
         )
-        .reduce((acc, sale) => acc + sale.financeDetails.financeAmount, 0);
+      );
+      const combined = salesResults.reduce(
+        (acc, result) => ({
+          data: [...acc.data, ...result.data],
+          totals: {
+            totalSales: acc.totals.totalSales + result.totals.totalSales,
+            totalProfit: acc.totals.totalProfit + result.totals.totalProfit,
+            totalCommission:
+              acc.totals.totalCommission + result.totals.totalCommission,
+            totalItems: acc.totals.totalItems + result.totals.totalItems,
+          },
+        }),
+        {
+          data: [],
+          totals: {
+            totalSales: 0,
+            totalProfit: 0,
+            totalCommission: 0,
+            totalItems: 0,
+          },
+        }
+      );
+
+      //console.log("combineddata", combined.data);
 
       return {
         sales: {
-          sales: transformedSales,
-          totalSales,
-          totalProfit,
-          totalCommission,
-          financeSales,
-          totalPages: Math.ceil(filteredSales.length / limit),
+          sales: combined.data,
+          totalSales: combined.totals.totalSales,
+          totalProfit: combined.totals.totalProfit,
+          totalCommission: combined.totals.totalCommission,
+          totalPages: Math.ceil(combined.totals.totalItems / limit),
           currentPage: page,
         },
-        analytics: {
-          analytics: await this.analyseSalesMetric(fullfilledSales),
-        },
+        analytics: await this.analyseSalesMetric(combined.data),
       };
     } catch (error) {
-      console.error("Error in getUserSales:", error);
+      //console.error("Error in getUserSales:", error);
       throw new APIError(
         "Failed to fetch sales data",
         STATUS_CODE.INTERNAL_ERROR,
@@ -549,6 +506,30 @@ class salesmanagment {
       createdAt: sale.createdAt,
     };
   }
+  // sellertransformSales(sales) {
+  //   console.log("#@#", sales);
+  //   return sales.map((sale) => ({
+  //     soldprice: sale.soldprice ?? 0,
+  //     netprofit: sale.totalprofit ?? 0,
+  //     commission: sale.commission ?? 0,
+  //     productcost: sale.productDetails?.productCost ?? 0,
+  //     productmodel: sale.categoryDetails?.itemModel ?? "N/A",
+  //     productname: sale.categoryDetails?.itemName ?? "N/A",
+  //     totalnetprice: sale.soldprice ?? 0,
+  //     totalsoldunits: sale.totaltransaction ?? 0,
+  //     totaltransaction: sale.totaltransaction ?? 0,
+  //     _id: {
+  //       productId: sale.productDetails?.productID ?? null,
+  //       sellerId: sale.sellerDetails?.id ?? null,
+  //       shopId: sale.shopDetails?.id ?? null,
+  //     },
+  //     financeDetails: sale.financeDetails ?? {},
+  //     CategoryId: sale.categoryDetails?.categoryId ?? null,
+  //     createdAt: sale.createdAt ?? null,
+  //     batchNumber: sale.productDetails?.batchNumber ?? "N/A",
+  //     category: sale.productDetails?.productType ?? "N/A",
+  //   }));
+  // }
 
   normalizedProduct(details) {
     return {

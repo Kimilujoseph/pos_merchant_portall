@@ -175,7 +175,87 @@ class Sales {
       financer: sale.financer || "N/A",
     };
   }
-  // In your repository
+  async findUserSales({ salesTable, userId, startDate, endDate, page, limit }) {
+    try {
+      // console.log("#$#$", salesTable);
+      const salesModel = prisma[salesTable];
+      const skip = (page - 1) * limit;
+
+      // Build conditional where clause based on the table
+      const whereClause = {
+        sellerId: userId,
+        createdAt: { gte: startDate, lte: endDate },
+        OR:
+          salesTable === "mobilesales"
+            ? [
+                { salesType: "direct" },
+                {
+                  salesType: "finance",
+                  financeStatus: { not: "pending" },
+                },
+              ]
+            : [
+                { financeStatus: "N/A" },
+                {
+                  financeStatus: { not: "pending" },
+                },
+              ],
+      };
+      const includeClause =
+        salesTable === "mobilesales"
+          ? {
+              mobiles: true,
+              shops: true,
+              categories: true,
+              actors: true,
+            }
+          : {
+              accessories: true,
+              shops: true,
+              categories: true,
+              actors: true,
+            };
+
+      const results = await salesModel.findMany({
+        where: whereClause,
+        include: includeClause,
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: limit,
+      });
+      const totals = await salesModel.aggregate({
+        where: whereClause,
+        _sum: {
+          soldPrice: true,
+          profit: true,
+          commission: true,
+        },
+        _count: true,
+      });
+
+      // const datareturned = results.map((sale) =>
+      //   this.transformUserSale(sale, salesTable)
+      // );
+      // console.log("#$#$", datareturned);
+
+      return {
+        data: results.map((sale) => this.transformUserSale(sale, salesTable)),
+        totals: {
+          totalSales: Number(totals._sum.soldPrice) || 0,
+          totalProfit: totals._sum.profit || 0,
+          totalCommission: totals._sum.commission || 0,
+          totalItems: totals._count || 0,
+        },
+      };
+    } catch (err) {
+      throw new APIError(
+        "Database error",
+        STATUS_CODE.INTERNAL_ERROR,
+        "Failed to retrieve user sales"
+      );
+    }
+  }
+
   async findCategorySales({ categoryId, startDate, endDate }) {
     return prisma.sales.findMany({
       where: {
@@ -222,6 +302,73 @@ class Sales {
         "internal server error"
       );
     }
+  }
+  transformUserSale(sale, tableName) {
+    // Common properties
+    const base = {
+      soldprice: sale.soldPrice,
+      totalprofit: sale.profit, // Changed from netprofit to match analysis expectations
+      totaltransaction: sale.quantity || 1, // Assuming quantity represents transactions
+      productDetails: {
+        productID: sale.productID,
+        productCost:
+          tableName === "mobilesales"
+            ? sale.mobiles?.productCost
+            : sale.accessories?.productCost,
+        batchNumber:
+          tableName === "mobilesales"
+            ? sale.mobiles?.batchNumber
+            : sale.accessories?.batchNumber,
+        productType:
+          tableName === "mobilesales"
+            ? sale.mobiles?.itemType
+            : sale.accessories?.productType,
+      },
+      categoryDetails: {
+        categoryId: sale.categoryId,
+        itemName: sale.categories?.itemName,
+        itemModel: sale.categories?.itemModel,
+        itemType: sale.categories?.itemType,
+        brand: sale.categories?.brand,
+      },
+      sellerDetails: {
+        id: sale.sellerId,
+        name: sale.actors?.name,
+        email: sale.actors?.email,
+      },
+      financeDetails: {
+        status: sale.financeStatus,
+        amount: sale.financeAmount,
+        financer: sale.financer,
+      },
+      shopDetails: {
+        id: sale.shopID,
+        name: sale.shops?.shopName,
+        address: sale.shops?.address,
+      },
+      createdAt: sale.createdAt,
+    };
+
+    // Add table-specific properties
+    return tableName === "mobilesales"
+      ? {
+          ...base,
+          saleType: sale.salesType,
+          productDetails: {
+            ...base.productDetails,
+            storage: sale.mobiles?.storage,
+            color: sale.mobiles?.color,
+          },
+        }
+      : {
+          ...base,
+          saleType: sale.financeStatus === "N/A" ? "direct" : "finance",
+          productDetails: {
+            ...base.productDetails,
+            color: sale.accessories?.color,
+            stockStatus: sale.accessories?.stockStatus,
+          },
+        };
   }
 }
 
