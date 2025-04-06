@@ -343,7 +343,7 @@ class salesmanagment {
           };
         }
 
-        sellerMetric[sellerId].totalSales += soldprice;
+        sellerMetric[sellerId].totalSales += Number(soldprice);
         sellerMetric[sellerId].netprofit += totalprofit;
         sellerMetric[sellerId].totaltransacted += totaltransaction;
       });
@@ -397,7 +397,8 @@ class salesmanagment {
         (acc, result) => ({
           data: [...acc.data, ...result.data],
           totals: {
-            totalSales: acc.totals.totalSales + result.totals.totalSales,
+            totalSales:
+              Number(acc.totals.totalSales) + Number(result.totals.totalSales),
             totalProfit: acc.totals.totalProfit + result.totals.totalProfit,
             totalCommission:
               acc.totals.totalCommission + result.totals.totalCommission,
