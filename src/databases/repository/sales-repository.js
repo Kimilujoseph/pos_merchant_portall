@@ -139,7 +139,7 @@ class Sales {
         categoryDetails: categoryMap.get(sale.categoryId) || null,
         financeDetails: this.mapFinanceDetails(sale),
       }));
-
+      //console.log("@@#withrelation", withRelations);
       return { generalReport: withRelations };
     } catch (err) {
       console.log("err", err);
@@ -306,9 +306,9 @@ class Sales {
   transformUserSale(sale, tableName) {
     // Common properties
     const base = {
-      soldprice: sale.soldPrice,
-      totalprofit: sale.profit, // Changed from netprofit to match analysis expectations
-      totaltransaction: sale.quantity || 1, // Assuming quantity represents transactions
+      soldprice: Number(sale.soldPrice),
+      totalprofit: sale.profit,
+      totaltransaction: sale.quantity || 1,
       productDetails: {
         productID: sale.productID,
         productCost:
@@ -321,7 +321,7 @@ class Sales {
             : sale.accessories?.batchNumber,
         productType:
           tableName === "mobilesales"
-            ? sale.mobiles?.itemType
+            ? sale.mobiles?.phoneType
             : sale.accessories?.productType,
       },
       categoryDetails: {

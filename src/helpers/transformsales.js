@@ -3,7 +3,7 @@ const transformSales = (salesArray) => {
     console.warn("Invalid sales data passed to transformSales");
     return [];
   }
-
+  //console.log("sales found", salesArray.sales);
   return salesArray.sales.map((sale) => ({
     soldprice: sale.soldprice,
     netprofit: sale.totalprofit,

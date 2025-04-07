@@ -42,7 +42,7 @@ class salesmanagment {
         .flatMap((result) => result.generalReport)
         .reduce(
           ([sales, acc], sale) => {
-            const transformed = this.transformSale(sale);
+            const transformed = this.transformgeneralSale(sale);
             sales.push(transformed);
             acc.totalSales += Number(sale._sum.soldPrice);
             acc.totalCommission += sale._sum.commission;
@@ -100,6 +100,68 @@ class salesmanagment {
         "internal error",
         STATUS_CODE.INTERNAL_ERROR,
         err.message || "internal server error"
+      );
+    }
+  }
+
+  async getUserSales(salesDetails) {
+    try {
+      const { userId, startDate, endDate, page, limit } = salesDetails;
+      const salesTables = ["mobilesales", "accessorysales"];
+      const salesResults = await Promise.all(
+        salesTables.map((table) =>
+          this.sales.findUserSales({
+            salesTable: table,
+            userId,
+            startDate,
+            endDate,
+            page,
+            limit,
+          })
+        )
+      );
+      const combined = salesResults.reduce(
+        (acc, result) => ({
+          data: [...acc.data, ...result.data],
+          totals: {
+            totalSales:
+              Number(acc.totals.totalSales) + Number(result.totals.totalSales),
+            totalProfit: acc.totals.totalProfit + result.totals.totalProfit,
+            totalCommission:
+              acc.totals.totalCommission + result.totals.totalCommission,
+            totalItems: acc.totals.totalItems + result.totals.totalItems,
+          },
+        }),
+        {
+          data: [],
+          totals: {
+            totalSales: 0,
+            totalProfit: 0,
+            totalCommission: 0,
+            totalItems: 0,
+          },
+        }
+      );
+
+      //console.log("combineddata", combined.data);
+
+      return {
+        sales: {
+          sales: combined.data,
+          totalSales: combined.totals.totalSales,
+          totalProfit: combined.totals.totalProfit,
+          totalCommission: combined.totals.totalCommission,
+          totalPages: Math.ceil(combined.totals.totalItems / limit),
+          currentPage: page,
+        },
+        analytics: await this.analyseSalesMetric(combined.data),
+      };
+    } catch (error) {
+      //console.error("Error in getUserSales:", error);
+      throw new APIError(
+        "Failed to fetch sales data",
+        STATUS_CODE.INTERNAL_ERROR,
+        error.message
       );
     }
   }
@@ -377,67 +439,6 @@ class salesmanagment {
     }
   }
 
-  async getUserSales(salesDetails) {
-    try {
-      const { userId, startDate, endDate, page, limit } = salesDetails;
-      const salesTables = ["mobilesales", "accessorysales"];
-      const salesResults = await Promise.all(
-        salesTables.map((table) =>
-          this.sales.findUserSales({
-            salesTable: table,
-            userId,
-            startDate,
-            endDate,
-            page,
-            limit,
-          })
-        )
-      );
-      const combined = salesResults.reduce(
-        (acc, result) => ({
-          data: [...acc.data, ...result.data],
-          totals: {
-            totalSales:
-              Number(acc.totals.totalSales) + Number(result.totals.totalSales),
-            totalProfit: acc.totals.totalProfit + result.totals.totalProfit,
-            totalCommission:
-              acc.totals.totalCommission + result.totals.totalCommission,
-            totalItems: acc.totals.totalItems + result.totals.totalItems,
-          },
-        }),
-        {
-          data: [],
-          totals: {
-            totalSales: 0,
-            totalProfit: 0,
-            totalCommission: 0,
-            totalItems: 0,
-          },
-        }
-      );
-
-      //console.log("combineddata", combined.data);
-
-      return {
-        sales: {
-          sales: combined.data,
-          totalSales: combined.totals.totalSales,
-          totalProfit: combined.totals.totalProfit,
-          totalCommission: combined.totals.totalCommission,
-          totalPages: Math.ceil(combined.totals.totalItems / limit),
-          currentPage: page,
-        },
-        analytics: await this.analyseSalesMetric(combined.data),
-      };
-    } catch (error) {
-      //console.error("Error in getUserSales:", error);
-      throw new APIError(
-        "Failed to fetch sales data",
-        STATUS_CODE.INTERNAL_ERROR,
-        error.message
-      );
-    }
-  }
   async paymentofcommission(salesId, amount) {
     try {
       const sale = await this.sales.findSalesById(salesId);
@@ -487,11 +488,12 @@ class salesmanagment {
     }
   }
 
-  transformSale(sale) {
+  transformgeneralSale(sale) {
+    //console.log("sales#$##$", sale);
     const financeStatus = sale.financeDetails.financeStatus;
     const isFinance = financeStatus !== "N/A";
     return {
-      soldprice: parseInt(sale._sum.soldPrice),
+      soldprice: Number(sale._sum.soldPrice),
       commission: sale._sum.commission,
       totalprofit: sale._sum.profit,
       totaltransaction: sale._count._all,
@@ -507,37 +509,12 @@ class salesmanagment {
       createdAt: sale.createdAt,
     };
   }
-  // sellertransformSales(sales) {
-  //   console.log("#@#", sales);
-  //   return sales.map((sale) => ({
-  //     soldprice: sale.soldprice ?? 0,
-  //     netprofit: sale.totalprofit ?? 0,
-  //     commission: sale.commission ?? 0,
-  //     productcost: sale.productDetails?.productCost ?? 0,
-  //     productmodel: sale.categoryDetails?.itemModel ?? "N/A",
-  //     productname: sale.categoryDetails?.itemName ?? "N/A",
-  //     totalnetprice: sale.soldprice ?? 0,
-  //     totalsoldunits: sale.totaltransaction ?? 0,
-  //     totaltransaction: sale.totaltransaction ?? 0,
-  //     _id: {
-  //       productId: sale.productDetails?.productID ?? null,
-  //       sellerId: sale.sellerDetails?.id ?? null,
-  //       shopId: sale.shopDetails?.id ?? null,
-  //     },
-  //     financeDetails: sale.financeDetails ?? {},
-  //     CategoryId: sale.categoryDetails?.categoryId ?? null,
-  //     createdAt: sale.createdAt ?? null,
-  //     batchNumber: sale.productDetails?.batchNumber ?? "N/A",
-  //     category: sale.productDetails?.productType ?? "N/A",
-  //   }));
-  // }
-
   normalizedProduct(details) {
     return {
       productID: details?.id,
       batchNumber: details?.batchNumber,
       productCost: details?.productCost,
-      productType: details?.productType,
+      productType: details?.phoneType || details?.productType || "unknown",
     };
   }
   normalizedCategoryDetails(details) {
