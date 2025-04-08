@@ -6,166 +6,152 @@ import { phoneinventoryrepository } from "../databases/repository/mobile-invento
 import { CategoryManagementRepository } from "../databases/repository/category-contoller-repository.js";
 import { APIError, STATUS_CODE } from "../Utils/app-error.js";
 
-class mobileSales {
-  constructor() {
-    this.user = new usermanagemenRepository();
-    this.inventory = new InventorymanagementRepository();
-    this.shop = new ShopmanagementRepository();
-    this.sales = new Sales();
-    this.mobile = new phoneinventoryrepository();
-    this.category = new CategoryManagementRepository();
+class MobileSalesService {
+  constructor(repositories = {}) {
+    this.repositories = {
+      user: repositories.user || new usermanagemenRepository(),
+      inventory: repositories.inventory || new InventorymanagementRepository(),
+      shop: repositories.shop || new ShopmanagementRepository(),
+      sales: repositories.sales || new Sales(),
+      mobile: repositories.mobile || new phoneinventoryrepository(),
+      category: repositories.category || new CategoryManagementRepository(),
+    };
   }
-  async MobileSales(saledetail) {
+
+  async validateSeller(sellerId, shopName) {
+    const [user, assignedShops] = await Promise.all([
+      this.repositories.user.findUserById({ id: sellerId }),
+      this.repositories.user.findAssignedShop(sellerId),
+    ]);
+
+    if (!user) {
+      throw new APIError("Seller not found", STATUS_CODE.NOT_FOUND);
+    }
+
+    if (user.workingstatus !== "active") {
+      throw new APIError(
+        `Unauthorized - Account ${user.workingstatus}`,
+        STATUS_CODE.UNAUTHORIZED
+      );
+    }
+
+    const activeAssignment = assignedShops.find(
+      (assignment) =>
+        assignment.status === "assigned" &&
+        assignment.shops.shopName === shopName
+    );
+
+    if (!activeAssignment) {
+      throw new APIError(
+        "Unauthorized to make sales in this shop",
+        STATUS_CODE.UNAUTHORIZED
+      );
+    }
+
+    return user;
+  }
+
+  async validateProductAvailability(stockId, shopName) {
+    const [product, shop] = await Promise.all([
+      this.repositories.mobile.findItem(stockId),
+      this.repositories.shop.findShop({ name: shopName }),
+    ]);
+
+    if (!product) {
+      throw new APIError("Product not found", STATUS_CODE.NOT_FOUND);
+    }
+
+    const shopStockItem = shop.mobileItems.find(
+      (item) =>
+        item.mobileID === stockId &&
+        item.quantity >= 1 &&
+        item.status === "available"
+    );
+
+    if (!shopStockItem) {
+      throw new APIError(
+        `Product not available in ${shopName}`,
+        STATUS_CODE.BAD_REQUEST
+      );
+    }
+
+    return { product, shop };
+  }
+
+  async recordSaleTransaction(saleData) {
+    const { product, soldPrice, costPerUnit, commission } = saleData;
+    const totalRevenue = soldPrice * saleData.quantity;
+    const totalCost = costPerUnit * saleData.quantity;
+    const profit = totalRevenue - totalCost - commission;
+
+    return this.repositories.sales.createnewMobilesales({
+      ...saleData,
+      profit,
+      salesType: ["cash", "mpesa"].includes(saleData.paymentmethod)
+        ? "direct"
+        : "finance",
+    });
+  }
+
+  async processMobileSale(saleDetails) {
     try {
       const {
-        customerName,
-        customerEmail,
-        customerphonenumber,
         productId,
         shopname,
         soldprice,
         seller,
-        paymentmethod,
         CategoryId,
-      } = saledetail;
+        ...customerDetails
+      } = saleDetails;
 
-      const soldUnits = 1;
       const stockId = parseInt(productId, 10);
       const sellerId = parseInt(seller, 10);
       const soldPrice = parseInt(soldprice, 10);
       const categoryId = parseInt(CategoryId, 10);
-      let [
-        userfound,
-        shopfound,
-        productAvailability,
-        assignedShop,
-        financeDetails,
-      ] = await Promise.all([
-        this.user.findUserById({ id: sellerId }),
-        this.shop.findShop({ name: shopname }),
-        this.mobile.findItem(stockId),
-        this.user.findAssignedShop(sellerId),
-        this.mobile.findMobileFinance(stockId),
+      const soldUnits = 1;
+
+      // Parallel validation checks
+      const [user, { product, shop }] = await Promise.all([
+        this.validateSeller(sellerId, shopname),
+        this.validateProductAvailability(stockId, shopname),
       ]);
-      if (!userfound) {
-        throw new APIError("seller not found", STATUS_CODE.NOT_FOUND, null);
-      }
 
-      if (!productAvailability) {
-        throw new APIError(
-          "not found",
-          STATUS_CODE.NOT_FOUND,
-          "product not found"
-        );
-      }
-
-      const assigned = assignedShop.filter(
-        (assignment) => assignment.status === "assigned"
-      );
-
-      if (assigned[0].shops.shopName !== shopname) {
-        throw new APIError(
-          "unauthorised to make sales",
-          STATUS_CODE.UNAUTHORIZED,
-          "not allowed to make sales in this shop"
-        );
-      }
-      if (userfound.workingstatus === "suspendend") {
-        throw new APIError(
-          "unauthorized",
-          STATUS_CODE.UNAUTHORIZED,
-          "you are currently suspendend"
-        );
-      } else if (userfound.workingstatus === "inactive") {
-        throw new APIError(
-          "unauthorized",
-          STATUS_CODE.UNAUTHORIZED,
-          "you currently inactive"
-        );
-      }
-      const filteredPhoneItem = shopfound.mobileItems.filter((item) => {
-        return item.mobileID !== null;
-      });
-      const stockItem = filteredPhoneItem.find(
-        (item) => item.mobileID === stockId
-      );
-      console.log("stokc", stockItem);
-      if (!stockItem) {
-        throw new APIError(
-          "product not available in the shop",
-          STATUS_CODE.NOT_FOUND,
-          `the product is not found in ${shopname} shop`
-        );
-      }
-      console.log("soldunits", soldUnits);
-      if (
-        (stockItem.quantity < 1 && stockItem.status === "transferd") ||
-        stockItem.status === "pending"
-      ) {
-        throw new APIError(
-          "stock not available for sale",
-          STATUS_CODE.BAD_REQUEST,
-          `stock not available  in ${shopname}`
-        );
-      }
-      //update shop inventory
-      const shopId = parseInt(shopfound.id, 10);
-      const updatedShopSales = await this.shop.updateSalesOfPhone(
-        shopId,
-        stockId,
-        soldUnits
-      );
-
-      let typeofFinance =
-        financeDetails.financer === "captech" ? "direct" : "finance";
-      //update the overall products
-      const updatesOnPhone = await Promise.all([
-        this.mobile.updatesalesofaphone({
+      // Update inventory
+      await Promise.all([
+        this.repositories.shop.updateSalesOfPhone(shop.id, stockId, soldUnits),
+        this.repositories.mobile.updatesalesofaphone({
           id: stockId,
-          sellerId: sellerId,
+          sellerId,
           status: "sold",
         }),
-        this.mobile.updateSoldPhone(stockId),
+        this.repositories.mobile.updateSoldPhone(stockId),
       ]);
 
-      const commissionAmount = parseInt(productAvailability.commission, 10);
-
-      //calculate the profit
-      const costperunit = productAvailability.productCost;
-      const totalrevenue = soldUnits * soldPrice;
-      const totalcost = soldUnits * costperunit;
-      const profit = totalrevenue - totalcost - commissionAmount;
-      const confirmedSales = {
-        productID: stockId,
-        shopID: shopId,
-        sellerId: sellerId,
-        profit: profit,
-        soldPrice: soldPrice,
-        quantity: 1,
-        commission: commissionAmount,
-        commisssionStatus: "pending",
-        shopID: shopId,
-        categoryId: categoryId,
-        finance: financeDetails.id,
-        financer: financeDetails.financer,
-        financeAmount: financeDetails.financeAmount,
-        financeStatus: financeDetails.financeStatus,
-        paymentmethod: paymentmethod,
-        salesType: typeofFinance,
-        customerName: customerName,
-        customerEmail: customerEmail,
-        customerPhoneNumber: customerphonenumber,
-      };
-      const recordSales = await this.sales.createnewMobilesales(confirmedSales);
-      return recordSales;
-    } catch (err) {
-      console.log("errer", err);
-      if (err instanceof APIError) {
-        throw err;
+      // Record sale
+      return this.recordSaleTransaction({
+        productId: stockId,
+        shopId: shop.id,
+        sellerId,
+        soldPrice,
+        quantity: soldUnits,
+        commission: parseInt(product.commission, 10),
+        categoryId,
+        costPerUnit: product.productCost,
+        ...customerDetails,
+        ...(await this.repositories.mobile.findMobileFinance(stockId)),
+      });
+    } catch (error) {
+      if (!(error instanceof APIError)) {
+        console.error("Sale processing error:", error);
+        throw new APIError(
+          "Internal server error",
+          STATUS_CODE.INTERNAL_ERROR,
+          error.message
+        );
       }
-      throw new APIError("internal errror", STATUS_CODE.INTERNAL_ERROR, err);
+      throw error;
     }
   }
 }
 
-export { mobileSales };
+export { MobileSalesService };
