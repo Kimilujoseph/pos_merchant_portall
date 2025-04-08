@@ -8,7 +8,7 @@ const transformSales = (salesArray) => {
     soldprice: sale.soldprice,
     netprofit: sale.totalprofit,
     commission: sale.commission,
-    productcost: sale.productDetails?.productCost || 0, // Added safe navigation
+    productcost: Number(sale.productDetails?.productCost) || 0,
     productmodel: sale.categoryDetails?.itemModel || "N/A",
     productname: sale.categoryDetails?.itemName || "Unknown",
     totalnetprice: sale.soldprice,

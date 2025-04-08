@@ -147,6 +147,7 @@ const getgeneralsales = async (req, res) => {
       );
     }
     const { sales, analytics } = generalSales[0];
+    //console.log("analytics of general sales ", analytics);
     //console.log("@#", sales);
     const transformedSales = transformSales(sales);
     // console.log("##$%#%$^", transformedSales);
@@ -157,17 +158,13 @@ const getgeneralsales = async (req, res) => {
         analytics: analytics || {},
         sales: transformedSales || [],
         salesPerMonth: sales.salesPerMonth || [],
-        totals: {
-          sales: sales.totalSales || 0,
-          profit: sales.totalProfit || 0,
-          commission: sales.totalCommission || 0,
-          financePending: sales.financeSales || 0,
-        },
-        pagination: {
-          totalPages: sales.totalPages || 1,
-          currentPage: sales.currentPage || 1,
-          itemsPerPage: limit || 10,
-        },
+        totalSales: sales.totalSales || 0,
+        totalProfit: sales.totalProfit || 0,
+        totalCommission: sales.totalCommission || 0,
+        totalfinancePending: sales.financeSales || 0,
+        totalPages: sales.totalPages || 1,
+        currentPage: sales.currentPage || 1,
+        itemsPerPage: limit || 10,
       },
     });
   } catch (err) {
@@ -335,8 +332,9 @@ const getUserSales = async (req, res) => {
       page,
       limit,
     });
-    console.log("report", report);
+    // console.log("report", report);
     const { sales, analytics } = report;
+    // console.log("#$usersales", analytics);
     const transformedSales = transformSales(sales);
     // console.log("##$%#%$^", transformedSales);
     handleResponse({
@@ -346,17 +344,13 @@ const getUserSales = async (req, res) => {
         analytics: analytics || {},
         sales: transformedSales || [],
         salesPerMonth: sales.salesPerMonth || [],
-        totals: {
-          sales: sales.totalSales || 0,
-          profit: sales.totalProfit || 0,
-          commission: sales.totalCommission || 0,
-          financePending: sales.financeSales || 0,
-        },
-        pagination: {
-          totalPages: sales.totalPages || 1,
-          currentPage: sales.currentPage || 1,
-          itemsPerPage: limit || 10,
-        },
+        totalSales: sales.totalSales || 0,
+        totalProfit: sales.totalProfit || 0,
+        totalCommission: sales.totalCommission || 0,
+        totalfinancePending: sales.financeSales || 0,
+        totalPages: sales.totalPages || 1,
+        currentPage: sales.currentPage || 1,
+        itemsPerPage: limit || 10,
       },
     });
   } catch (err) {

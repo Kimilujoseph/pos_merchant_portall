@@ -154,7 +154,9 @@ class salesmanagment {
           totalPages: Math.ceil(combined.totals.totalItems / limit),
           currentPage: page,
         },
-        analytics: await this.analyseSalesMetric(combined.data),
+        analytics: {
+          analytics: await this.analyseSalesMetric(combined.data),
+        },
       };
     } catch (error) {
       //console.error("Error in getUserSales:", error);
