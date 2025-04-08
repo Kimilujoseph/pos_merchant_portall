@@ -321,7 +321,7 @@ class Sales {
             : sale.accessories?.batchNumber,
         productType:
           tableName === "mobilesales"
-            ? sale.mobiles?.phoneType
+            ? sale.mobiles?.itemType
             : sale.accessories?.productType,
       },
       categoryDetails: {

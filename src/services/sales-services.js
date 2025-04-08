@@ -516,7 +516,7 @@ class salesmanagment {
       productID: details?.id,
       batchNumber: details?.batchNumber,
       productCost: details?.productCost,
-      productType: details?.phoneType || details?.productType || "mobiles",
+      productType: details?.itemType || details?.productType || "mobiles",
     };
   }
   normalizedCategoryDetails(details) {
