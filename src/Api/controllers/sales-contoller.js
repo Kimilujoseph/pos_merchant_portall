@@ -1,6 +1,6 @@
 import { parse } from "dotenv";
 import { salesmanagment } from "../../services/sales-services.js";
-import { accessorySales } from "../../services/accessorysales-service.js";
+import { AccessorySalesService } from "../../services/accessorysales-service.js";
 import { MobileSalesService } from "../../services/mobileSales-services.js";
 import { transformSales } from "../../helpers/transformsales.js";
 import { getDateRange } from "../../helpers/dateUtils.js";
@@ -15,7 +15,7 @@ import {
 
 const salesService = new salesmanagment();
 const mobileSales = new MobileSalesService();
-const accessorySalesService = new accessorySales();
+const accessorySalesService = new AccessorySalesService();
 
 const makesales = async (req, res) => {
   try {
@@ -63,7 +63,12 @@ const makesales = async (req, res) => {
     );
     const processaccessoriesales =
       accessoriesSales.length > 0
-        ? processSales(accessoriesSales, accessorySalesService.Accessorysales)
+        ? processSales(
+            accessoriesSales,
+            accessorySalesService.processAccessorySale.bind(
+              accessorySalesService
+            )
+          )
         : [];
 
     // Use promises to wait for all sales to be processed

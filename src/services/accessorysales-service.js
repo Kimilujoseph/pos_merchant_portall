@@ -29,7 +29,8 @@ class AccessorySalesService {
     if (user.workingstatus !== "active") {
       throw new APIError(
         `Unauthorized - Account ${user.workingstatus}`,
-        STATUS_CODE.UNAUTHORIZED
+        STATUS_CODE.UNAUTHORIZED,
+        `Unauthorized - Account ${user.workingstatus}`
       );
     }
 
@@ -42,7 +43,8 @@ class AccessorySalesService {
     if (!activeAssignment) {
       throw new APIError(
         "Unauthorized to make sales in this shop",
-        STATUS_CODE.UNAUTHORIZED
+        STATUS_CODE.UNAUTHORIZED,
+        "Unauthorized to make sales in this shop"
       );
     }
 
@@ -56,11 +58,19 @@ class AccessorySalesService {
     ]);
 
     if (!product) {
-      throw new APIError("Product not found", STATUS_CODE.NOT_FOUND);
+      throw new APIError(
+        "Product not found",
+        STATUS_CODE.NOT_FOUND,
+        "product not found"
+      );
     }
 
     if (!shop) {
-      throw new APIError("Shop not found", STATUS_CODE.NOT_FOUND);
+      throw new APIError(
+        "Shop not found",
+        STATUS_CODE.NOT_FOUND,
+        "shop not found"
+      );
     }
 
     const stockItem = shop.accessoryItems.find(
@@ -74,7 +84,8 @@ class AccessorySalesService {
     if (!stockItem) {
       throw new APIError(
         `Product not available in ${shopName}`,
-        STATUS_CODE.BAD_REQUEST
+        STATUS_CODE.BAD_REQUEST,
+        `Product not available in ${shopName}`
       );
     }
 
@@ -125,7 +136,11 @@ class AccessorySalesService {
         transferId,
       ];
       if (numericFields.some((field) => isNaN(parseInt(field, 10)))) {
-        throw new APIError("Invalid numeric input", STATUS_CODE.BAD_REQUEST);
+        throw new APIError(
+          "Invalid numeric input",
+          STATUS_CODE.BAD_REQUEST,
+          "invalid numeric values"
+        );
       }
 
       const [stockId, sellerId, soldPrice, categoryId, productTransferId] =
@@ -161,7 +176,7 @@ class AccessorySalesService {
       throw new APIError(
         "Internal server error",
         STATUS_CODE.INTERNAL_ERROR,
-        error.message
+        "internal server error"
       );
     }
   }
