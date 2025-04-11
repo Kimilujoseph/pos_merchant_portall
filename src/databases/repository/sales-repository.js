@@ -4,6 +4,7 @@ const prisma = new PrismaClient();
 class Sales {
   async createnewMobilesales(salesDetails) {
     try {
+      console.log("#$#$", salesDetails);
       const successfullsale = await prisma.mobilesales.create({
         data: {
           ...salesDetails,

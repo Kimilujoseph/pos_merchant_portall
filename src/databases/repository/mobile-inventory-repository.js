@@ -5,16 +5,17 @@ class phoneinventoryrepository {
   async createPhonewithFinaceDetails(payload) {
     try {
       const { phoneDetails, financeDetails, shopId, user } = payload;
-      console.log("phoneDetails", phoneDetails)
-
-      const newMobileProduct = await this.createphoneStock({ ...phoneDetails });
-      await this.createFinanceDetails(newMobileProduct.id, financeDetails);
-      await this.createHistory({
-        user,
-        shopId,
-        productId: newMobileProduct.id,
-        type: "new stock",
-      });
+      console.log("phoneDetails", phoneDetails);
+      const newMobileProduct = await Promise.all([
+        this.createphoneStock({ ...phoneDetails }),
+        this.createFinanceDetails(newMobileProduct.id, financeDetails),
+        this.createHistory({
+          user,
+          shopId,
+          productId: newMobileProduct.id,
+          type: "new stock",
+        }),
+      ]);
     } catch (err) {
       console.log("err", err);
       if (err instanceof APIError) {
@@ -608,7 +609,6 @@ class phoneinventoryrepository {
     try {
       const lowercaseSearchItem = searchItem.toLowerCase(); // Convert search term to lowercase
 
-
       const imeiMatches = await prisma.mobiles.findMany({
         where: {
           IMEI: {
@@ -663,15 +663,18 @@ class phoneinventoryrepository {
         },
       });
 
-
       const combinedResults = [...imeiMatches, ...categoryMatches];
 
-
       const filteredResults = combinedResults.filter((mobile) => {
-        const imeiMatch = mobile.IMEI?.toLowerCase().includes(lowercaseSearchItem);
+        const imeiMatch =
+          mobile.IMEI?.toLowerCase().includes(lowercaseSearchItem);
         const categoryMatch =
-          mobile.categories.itemName?.toLowerCase().includes(lowercaseSearchItem) ||
-          mobile.categories.itemModel?.toLowerCase().includes(lowercaseSearchItem) ||
+          mobile.categories.itemName
+            ?.toLowerCase()
+            .includes(lowercaseSearchItem) ||
+          mobile.categories.itemModel
+            ?.toLowerCase()
+            .includes(lowercaseSearchItem) ||
           mobile.categories.brand?.toLowerCase().includes(lowercaseSearchItem);
 
         return imeiMatch || categoryMatch;

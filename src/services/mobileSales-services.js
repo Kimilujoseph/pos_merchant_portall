@@ -51,10 +51,11 @@ class MobileSalesService {
     return user;
   }
 
-  async validateProductAvailability(stockId, shopName) {
-    const [product, shop] = await Promise.all([
+  async validateProductAndFinance(stockId, shopName) {
+    const [product, shop, finance] = await Promise.all([
       this.repositories.mobile.findItem(stockId),
       this.repositories.shop.findShop({ name: shopName }),
+      this.repositories.mobile.findMobileFinance(stockId),
     ]);
 
     if (!product) {
@@ -65,31 +66,47 @@ class MobileSalesService {
       (item) =>
         item.mobileID === stockId &&
         item.quantity >= 1 &&
-        item.status === "available"
+        item.status === "confirmed"
     );
 
     if (!shopStockItem) {
       throw new APIError(
         `Product not available in ${shopName}`,
-        STATUS_CODE.BAD_REQUEST
+        STATUS_CODE.BAD_REQUEST,
+        `Product not available in ${shopName}`
       );
     }
 
-    return { product, shop };
+    return { product, shop, finance };
   }
 
-  async recordSaleTransaction(saleData) {
-    const { product, soldPrice, costPerUnit, commission } = saleData;
-    const totalRevenue = soldPrice * saleData.quantity;
-    const totalCost = costPerUnit * saleData.quantity;
-    const profit = totalRevenue - totalCost - commission;
+  async updateInventory(shopId, stockId, soldUnits) {
+    await Promise.all([
+      this.repositories.shop.updateSalesOfPhone(shopId, stockId, soldUnits),
+      this.repositories.mobile.updatesalesofaphone({
+        id: stockId,
+        sellerId: this.sellerId,
+        status: "sold",
+      }),
+      this.repositories.mobile.updateSoldPhone(stockId),
+    ]);
+  }
 
+  async recordSaleTransaction(saleData, finance) {
+    console.log("salesData", saleData);
     return this.repositories.sales.createnewMobilesales({
       ...saleData,
-      profit,
       salesType: ["cash", "mpesa"].includes(saleData.paymentmethod)
         ? "direct"
         : "finance",
+      financeStatus: ["cash", "mpesa"].includes(saleData.paymentmethod)
+        ? "paid"
+        : "pending",
+      financer: ["cash", "mpesa"].includes(saleData.paymentmethod)
+        ? "captech limited"
+        : finance.financer,
+      finance: finance.id,
+      financeAmount: finance.financeAmount,
     });
   }
 
@@ -101,55 +118,53 @@ class MobileSalesService {
         soldprice,
         seller,
         CategoryId,
+        paymentmethod,
         ...customerDetails
       } = saleDetails;
-
-      const stockId = parseInt(productId, 10);
-      const sellerId = parseInt(seller, 10);
-      const soldPrice = parseInt(soldprice, 10);
-      const categoryId = parseInt(CategoryId, 10);
-      const soldUnits = 1;
-
-      // Parallel validation checks
-      const [user, { product, shop }] = await Promise.all([
-        this.validateSeller(sellerId, shopname),
-        this.validateProductAvailability(stockId, shopname),
-      ]);
-
-      // Update inventory
-      await Promise.all([
-        this.repositories.shop.updateSalesOfPhone(shop.id, stockId, soldUnits),
-        this.repositories.mobile.updatesalesofaphone({
-          id: stockId,
-          sellerId,
-          status: "sold",
-        }),
-        this.repositories.mobile.updateSoldPhone(stockId),
-      ]);
-
-      // Record sale
-      return this.recordSaleTransaction({
-        productId: stockId,
-        shopId: shop.id,
-        sellerId,
-        soldPrice,
-        quantity: soldUnits,
-        commission: parseInt(product.commission, 10),
-        categoryId,
-        costPerUnit: product.productCost,
-        ...customerDetails,
-        ...(await this.repositories.mobile.findMobileFinance(stockId)),
-      });
-    } catch (error) {
-      if (!(error instanceof APIError)) {
-        console.error("Sale processing error:", error);
-        throw new APIError(
-          "Internal server error",
-          STATUS_CODE.INTERNAL_ERROR,
-          error.message
-        );
+      // console.log("343@", customerDetails);
+      const numericFields = [productId, seller, soldprice, CategoryId];
+      if (numericFields.some((field) => isNaN(parseInt(field, 10)))) {
+        throw new APIError("Invalid numeric input", STATUS_CODE.BAD_REQUEST);
       }
-      throw error;
+
+      const [stockId, sellerId, soldPrice, categoryId] = numericFields.map(
+        (f) => parseInt(f, 10)
+      );
+
+      const [user, { product, shop, finance }] = await Promise.all([
+        this.validateSeller(sellerId, shopname),
+        this.validateProductAndFinance(stockId, shopname),
+      ]);
+      await this.updateInventory(shop.id, stockId, 1);
+      const profit = soldPrice - product.productCost - product.commission;
+
+      return this.recordSaleTransaction(
+        {
+          productID: stockId,
+          shopID: shop.id,
+          sellerId,
+          soldPrice,
+          quantity: 1,
+          commission: parseInt(product.commission, 10),
+          categoryId,
+          paymentmethod,
+          profit,
+          customerName: customerDetails.customerName,
+          customerEmail: customerDetails.customerEmails,
+          customerPhoneNumber: customerDetails.customerphonenumber,
+        },
+        finance
+      );
+    } catch (error) {
+      console.error("Sales Error:", error);
+      if (error instanceof APIError) {
+        throw error;
+      }
+      throw new APIError(
+        "Internal server error",
+        STATUS_CODE.INTERNAL_ERROR,
+        error.message
+      );
     }
   }
 }

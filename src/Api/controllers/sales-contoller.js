@@ -1,7 +1,7 @@
 import { parse } from "dotenv";
 import { salesmanagment } from "../../services/sales-services.js";
 import { accessorySales } from "../../services/accessorysales-service.js";
-import { mobileSales } from "../../services/mobileSales-services.js";
+import { MobileSalesService } from "../../services/mobileSales-services.js";
 import { transformSales } from "../../helpers/transformsales.js";
 import { getDateRange } from "../../helpers/dateUtils.js";
 import { checkRole } from "../../helpers/authorisation.js";
@@ -14,7 +14,7 @@ import {
 } from "../../services/pdfGenerator.js";
 
 const salesService = new salesmanagment();
-const mobileSalesService = new mobileSales();
+const mobileSales = new MobileSalesService();
 const accessorySalesService = new accessorySales();
 
 const makesales = async (req, res) => {
@@ -29,10 +29,12 @@ const makesales = async (req, res) => {
       //id is procesed as a separate sales
       return sales.flatMap((sale) => {
         const { items, ...salesDetail } = sale;
-        //console.log("@#@#$", sale);
+        console.log("SDwe", salesDetail);
+
         return items.map((item) => {
           const salesDetails = {
-            ...salesDetail,
+            paymentmethod: salesDetail.paymentmethod,
+            CategoryId: salesDetail.CategoryId,
             soldprice: item.soldprice,
             soldUnits: item.soldUnits,
             productId: item.productId,
@@ -43,25 +45,18 @@ const makesales = async (req, res) => {
             customerEmail: customerdetails.email,
             customerphonenumber: customerdetails.phonenumber,
           };
-          // the call method will create
-          //hope the new developer you are familiar with context binding in js
-          // if not you can check it out
-          //i know but its long but i really want you to understand
-          //the call ensure that this inside the salesMehod refers to the sales service
-          return salesMethod.call(salesService, salesDetails);
+          return salesMethod(salesDetails);
         });
       });
     };
-
-    // Process phone sales
-    const phonesales = bulksales.filter(
-      (sales) => sales.itemType === "mobiles"
-    );
+    const phonesales = bulksales.filter((sale) => sale.itemType === "mobiles");
     const processphonesales =
       phonesales.length > 0
-        ? processSales(phonesales, mobileSalesService.MobileSales)
+        ? processSales(
+            phonesales,
+            mobileSales.processMobileSale.bind(mobileSales)
+          )
         : [];
-
     // Process accessory sales
     const accessoriesSales = bulksales.filter(
       (sales) => sales.itemType == "accessories"
