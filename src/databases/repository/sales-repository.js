@@ -22,6 +22,7 @@ class Sales {
   }
   async createnewAccessoriesales(salesDetails) {
     try {
+      console.log("@#$#$", salesDetails);
       const successfullsale = await prisma.accessorysales.create({
         data: {
           ...salesDetails,

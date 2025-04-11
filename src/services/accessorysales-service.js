@@ -78,7 +78,7 @@ class AccessorySalesService {
         item.accessoryID === stockId &&
         item.transferId === transferId &&
         item.quantity >= quantity &&
-        item.status === "available"
+        item.status === "confirmed"
     );
 
     if (!stockItem) {
@@ -101,17 +101,8 @@ class AccessorySalesService {
   }
 
   async recordAccessorySaleTransaction(saleData) {
-    const profit =
-      saleData.soldPrice * saleData.quantity -
-      saleData.costPerUnit * saleData.quantity -
-      saleData.commission;
-
     return this.repositories.sales.createnewAccessoriesales({
       ...saleData,
-      profit,
-      salesType: ["cash", "mpesa"].includes(saleData.paymentmethod)
-        ? "direct"
-        : "finance",
     });
   }
 
@@ -125,7 +116,7 @@ class AccessorySalesService {
         transferId,
         soldUnits,
         CategoryId,
-        ...customerDetails
+        ...otherDetails
       } = saleDetails;
 
       const numericFields = [
@@ -153,20 +144,26 @@ class AccessorySalesService {
       ]);
 
       await this.updateInventory(shop.id, productTransferId, quantity);
-
+      const profit =
+        soldPrice -
+        product.productCost * quantity -
+        product.commission * quantity;
       return this.recordAccessorySaleTransaction({
         productID: stockId,
         shopID: shop.id,
         sellerId,
         soldPrice,
+        paymentmethod: otherDetails.paymentmethod,
         quantity,
         commission: parseInt(product.commission, 10),
         categoryId,
-        costPerUnit: product.productCost,
-        transferId: productTransferId,
-        customerName: customerDetails.customerName,
-        customerEmail: customerDetails.customerEmails,
-        customerPhoneNumber: customerDetails.customerphonenumber,
+        profit,
+        finance: 0,
+        financeAmount: 0,
+        financer: "Captech limited",
+        customerName: otherDetails.customerName,
+        customerEmail: otherDetails.customerEmails,
+        customerPhoneNumber: otherDetails.customerphonenumber,
       });
     } catch (error) {
       console.error("Accessory Sales Error:", error);
