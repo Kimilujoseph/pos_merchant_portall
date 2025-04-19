@@ -29,7 +29,7 @@ const makesales = async (req, res) => {
       //id is procesed as a separate sales
       return sales.flatMap((sale) => {
         const { items, ...salesDetail } = sale;
-        console.log("SDwe", salesDetail);
+        // console.log("SDwe", salesDetail);
 
         return items.map((item) => {
           const salesDetails = {

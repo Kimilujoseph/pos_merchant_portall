@@ -19,12 +19,7 @@ route.get(
   "/mobile/item/transferhistory/:id",
   findSpecificProductTransferHistory
 );
-route.post(
-  "/add-phone-stock",
-  verifyUser,
-  validateSalesPayload,
-  addNewPhoneProduct
-);
+route.post("/add-phone-stock", verifyUser, addNewPhoneProduct);
 
 route.delete(
   "/create-phone-deletion/:id",

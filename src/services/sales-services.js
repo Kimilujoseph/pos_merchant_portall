@@ -46,13 +46,13 @@ class salesmanagment {
             sales.push(transformed);
             acc.totalSales += Number(sale._sum.soldPrice);
             acc.totalCommission += sale._sum.commission;
-            acc.totalProfit += transformed.totalprofit;
 
             if (
               transformed.saleType === "finance" &&
               transformed.financeDetails.financeStatus === "pending"
             ) {
               acc.financeSales += transformed.financeDetails.financeAmount;
+              acc.totalProfit += transformed.totalprofit;
             }
 
             return [sales, acc];
