@@ -19,7 +19,7 @@ class salesmanagment {
     try {
       const SALES_TABLE = ["mobilesales", "accessorysales"];
       const skip = (page - 1) * limit;
-      console.log(page, limit);
+      //console.log(page, limit);
       const salesResult = await Promise.all(
         SALES_TABLE.map(async (table) => {
           return this.sales.findSales({
@@ -38,21 +38,25 @@ class salesmanagment {
         );
       }
 
+      //console.log("sales found", salesResult.generalReport);
+
       const [transformedSales, total] = salesResult
         .flatMap((result) => result.generalReport)
         .reduce(
           ([sales, acc], sale) => {
+            // console.log("#$#$", sale);
             const transformed = this.transformgeneralSale(sale);
+            //console.log("transformed sales", transformed);
             sales.push(transformed);
             acc.totalSales += Number(sale._sum.soldPrice);
             acc.totalCommission += sale._sum.commission;
 
-            if (
-              transformed.saleType === "finance" &&
-              transformed.financeDetails.financeStatus === "pending"
-            ) {
-              acc.financeSales += transformed.financeDetails.financeAmount;
+            if (transformed.financeStatus !== "pending") {
               acc.totalProfit += transformed.totalprofit;
+            }
+
+            if (transformed.financeDetails.financeStatus === "pending") {
+              acc.financeSales += transformed.financeDetails.financeAmount;
             }
 
             return [sales, acc];
@@ -67,9 +71,6 @@ class salesmanagment {
             },
           ]
         );
-
-      //sconsole.log("transformed", transformedSales);
-
       const [analytics, paginatedSales] = await Promise.all([
         this.analyseSalesMetric(transformedSales),
         Promise.resolve(transformedSales.slice(skip, skip + limit)),
@@ -368,7 +369,7 @@ class salesmanagment {
       const productMetric = {};
       const sellerMetric = {};
 
-      // Iterate through the sales data
+      // Iterate through the sales dat
       salesData.forEach((sale) => {
         const {
           soldprice,
@@ -377,12 +378,15 @@ class salesmanagment {
           productDetails,
           categoryDetails,
           sellerDetails,
+          financeStatus,
         } = sale;
         //did some twisting so we can have transcation counted in terms of category
         const productId = categoryDetails.itemName;
         const sellerId = sellerDetails.id;
         const productName = categoryDetails.itemName;
         const sellerName = sellerDetails.name;
+
+        if (financeStatus === "pending") return;
 
         // Update product metrics
         if (!productMetric[productId]) {
@@ -415,7 +419,7 @@ class salesmanagment {
       // Sort and get top 5 products
       const productAnalytics = Object.values(productMetric)
         .sort((a, b) => b.totalSales - a.totalSales)
-        .slice(0, 5);
+        .slice(0, 10);
 
       // Get total number of products
       const totalProducts = Object.keys(productMetric).length;
@@ -423,7 +427,7 @@ class salesmanagment {
       // Sort and get top 5 sellers
       const sellerAnalytics = Object.values(sellerMetric)
         .sort((a, b) => b.totalSales - a.totalSales)
-        .slice(0, 5);
+        .slice(0, 10);
 
       // Get total number of sellers
       const totalSellers = Object.keys(sellerMetric).length;
@@ -509,6 +513,7 @@ class salesmanagment {
       saleType: isFinance ? "finance" : "direct",
       financeDetails: sale.financeDetails,
       createdAt: sale.createdAt,
+      financeStatus: sale.financeStatus,
     };
   }
   normalizedProduct(details) {
