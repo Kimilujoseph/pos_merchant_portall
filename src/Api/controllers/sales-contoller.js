@@ -1,120 +1,12 @@
 import { parse } from "dotenv";
 import { salesmanagment } from "../../services/sales-services.js";
-import { AccessorySalesService } from "../../services/accessorysales-service.js";
-import { MobileSalesService } from "../../services/mobileSales-services.js";
 import { transformSales } from "../../helpers/transformsales.js";
 import { getDateRange } from "../../helpers/dateUtils.js";
 import { checkRole } from "../../helpers/authorisation.js";
 import { handleError, handleResponse } from "../../helpers/responseUtils.js";
 import { APIError, STATUS_CODE } from "../../Utils/app-error.js";
 import moment from "moment";
-import {
-  generatePdfMakeReport,
-  generatePdfSalesReport,
-} from "../../services/pdfGenerator.js";
-
 const salesService = new salesmanagment();
-const mobileSales = new MobileSalesService();
-const accessorySalesService = new AccessorySalesService();
-
-const makesales = async (req, res) => {
-  try {
-    const { bulksales, customerdetails, shopName } = req.body;
-    const user = req.user;
-    const shopname = req.params.name;
-
-    // Created a helper  function to process depending on product category
-    const processSales = (sales, salesMethod) => {
-      //flatMap() will hadle multiple itemId and ensure each
-      //id is procesed as a separate sales
-      return sales.flatMap((sale) => {
-        const { items, ...salesDetail } = sale;
-        // console.log("SDwe", salesDetail);
-
-        return items.map((item) => {
-          const salesDetails = {
-            paymentmethod: salesDetail.paymentmethod,
-            CategoryId: salesDetail.CategoryId,
-            soldprice: item.soldprice,
-            soldUnits: item.soldUnits,
-            productId: item.productId,
-            shopname: shopName,
-            transferId: item?.transferId,
-            seller: user.id,
-            customerName: customerdetails.name,
-            customerEmail: customerdetails.email,
-            customerphonenumber: customerdetails.phonenumber,
-          };
-          return salesMethod(salesDetails);
-        });
-      });
-    };
-    const phonesales = bulksales.filter((sale) => sale.itemType === "mobiles");
-    const processphonesales =
-      phonesales.length > 0
-        ? processSales(
-            phonesales,
-            mobileSales.processMobileSale.bind(mobileSales)
-          )
-        : [];
-    // Process accessory sales
-    const accessoriesSales = bulksales.filter(
-      (sales) => sales.itemType == "accessories"
-    );
-    const processaccessoriesales =
-      accessoriesSales.length > 0
-        ? processSales(
-            accessoriesSales,
-            accessorySalesService.processAccessorySale.bind(
-              accessorySalesService
-            )
-          )
-        : [];
-
-    // Use promises to wait for all sales to be processed
-    const allPromises = [...processphonesales, ...processaccessoriesales];
-    if (allPromises.length > 0) {
-      const results = await Promise.allSettled(allPromises);
-
-      const successfulSales = results.filter(
-        (result) => result.status === "fulfilled"
-      );
-      const failedSales = results.filter(
-        (result) => result.status === "rejected"
-      );
-
-      if (failedSales.length > 0) {
-        console.error("Some distributions failed:", failedSales);
-      }
-      return res.status(200).json({
-        message: "sales process completed",
-        successfulSales: successfulSales.length,
-        failedSales: failedSales.length,
-        error: failedSales.length > 0,
-        details: failedSales.map((failure) => ({
-          reason: failure.reason.message || "Unknown error",
-        })),
-      });
-    } else {
-      throw new APIError(
-        "No distribution made",
-        STATUS_CODE.BAD_REQUEST,
-        "No sales made"
-      );
-    }
-  } catch (err) {
-    console.log("err", err);
-    if (err instanceof APIError) {
-      res.status(err.statusCode).json({
-        error: err.message,
-      });
-    } else {
-      res.status(STATUS_CODE.INTERNAL_ERROR).json({
-        error: "Internal Server Error",
-      });
-    }
-  }
-};
 
 const getgeneralsales = async (req, res) => {
   try {
@@ -178,41 +70,16 @@ const getCategorySales = async (req, res) => {
     const period = req.query.period || "year";
     const categoryId = parseInt(req.params.categoryId, 10);
     const user = req.user;
-    if (user.role !== "manager" && user.role !== "superuser") {
+    if (
+      !checkRole(req.user.role, ["manager", "superuser"]) &&
+      user.id !== req.user.id
+    ) {
       throw new APIError("not authorised", 403, "not allowed to view sales");
     }
 
-    // Helper functions for date ranges
-    const getStartOfDay = (date) =>
-      new Date(new Date(date).setHours(0, 0, 0, 0));
-    const getEndOfDay = (date) =>
-      new Date(new Date(date).setHours(23, 59, 59, 999));
-
-    let startDate, endDate;
-
-    if (date) {
-      startDate = getStartOfDay(date);
-      endDate = getEndOfDay(date);
-    } else {
-      const now = moment();
-      switch (period) {
-        case "week":
-          startDate = now.startOf("week").toDate();
-          endDate = now.endOf("week").toDate();
-          break;
-        case "month":
-          startDate = now.startOf("month").toDate();
-          endDate = now.endOf("month").toDate();
-          break;
-        case "year":
-          startDate = now.startOf("year").toDate();
-          endDate = now.endOf("year").toDate();
-          break;
-        default:
-          startDate = now.startOf("day").toDate();
-          endDate = now.endOf("day").toDate();
-      }
-    }
+    const [startDate, endDate] = getDateRange(period, date).map((m) =>
+      m.toDate()
+    );
     const salesDetails = {
       categoryId,
       startDate,
@@ -220,7 +87,6 @@ const getCategorySales = async (req, res) => {
       page: parseInt(page),
       limit: parseInt(limit),
     };
-
     const report = await salesService.generateCategorySales(salesDetails);
 
     if (!report) {
@@ -361,73 +227,5 @@ const getUserSales = async (req, res) => {
     }
   }
 };
-const payUsercommission = async (req, res) => {
-  const { salesId, amount } = req.body;
-  try {
-    // const user = req.user;
-    // if (user.role !== "manager") {
-    //     throw new APIError("unauthorised", STATUS_CODE.UNAUTHORIZED, "not allowed to pay commission")
-    // }
-    const paycommission = await salesService.paymentofcommission(
-      salesId,
-      amount
-    );
-    return res
-      .status(200)
-      .json({ error: false, message: "successfully paid the commission" });
-  } catch (err) {
-    console.log(err);
-    return res.status(500).json({ message: "failed to pay commission" });
-  }
-};
 
-const sendEmails = async (req, res) => {
-  try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const period = req.query.period;
-    let startdate;
-    let endDate;
-
-    const getStartdate = (date) => {
-      let start = new Date(date);
-      start.setHours(0, 0, 0, 0);
-      return start;
-    };
-
-    const getendDate = (date) => {
-      let end = new Date(date);
-      end.setHours(23, 59, 59, 999);
-      return end;
-    };
-
-    if (req.query.date) {
-      startdate = date ? getStartdate(date) : getStartdate(new Date());
-      endDate = date ? getendDate(date) : getendDate(new Date());
-    }
-    const generalSales = await salesService.generategeneralsales({
-      startdate: startdate,
-      endDate: endDate,
-      limit: limit,
-      page: page,
-    });
-
-    res.status(200).json({ message: generalSales });
-  } catch (err) {
-    console.log("controller", err);
-    if (err instanceof APIError) {
-      res.status(err.statusCode).json({ error: err.message });
-    } else {
-      res.status(500).json({ error: "Internal server error" });
-    }
-  }
-};
-
-export {
-  getCategorySales,
-  getShopSales,
-  getgeneralsales,
-  getUserSales,
-  payUsercommission,
-  makesales,
-};
+export { getCategorySales, getShopSales, getgeneralsales, getUserSales };

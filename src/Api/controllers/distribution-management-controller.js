@@ -5,22 +5,20 @@ const distributionManager = new distributionService();
 const handleBulkDistibution = async (req, res) => {
   try {
     const user = req.user;
-    console.log(user);
     const { bulkDistribution, shopDetails, category } = req.body;
-
-    console.log(req.body);
-    if (user.role !== "manager" && user.role !== "superuser") {
+    if (!["manager", "superuser"].includes(user.role)) {
       throw new APIError(
         "unauthorised",
         STATUS_CODE.UNAUTHORIZED,
-        "not allowed to commmit a distribution"
+        `DEAR ${user.name} you are not authorised to commit a distribution`
       );
     }
-
     if (!bulkDistribution || bulkDistribution.length === 0) {
-      return res.status(STATUS_CODE.BAD_REQUEST).json({
-        message: "Please provide a list of items",
-      });
+      throw new APIError(
+        "BAD REQUEST",
+        STATUS_CODE.BAD_REQUEST,
+        "distribution entries empty"
+      );
     }
 
     const mainShop = shopDetails.mainShop;
@@ -43,7 +41,6 @@ const handleBulkDistibution = async (req, res) => {
       productDistribution = bulkDistribution.filter(
         (item) => item.stockId !== null
       );
-      console.log("wewe", productDistribution);
       processProductDistribution =
         productDistribution.length > 0
           ? processDistribution(

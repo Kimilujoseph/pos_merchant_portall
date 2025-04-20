@@ -5,15 +5,13 @@ import {
   getShopSales,
   getgeneralsales,
   getUserSales,
-  payUsercommission,
-  makesales,
 } from "../controllers/sales-contoller.js";
+import { makesales } from "../controllers/make-sales-managment.contoller.js";
 
 const route = express.Router();
 route.get("/report/category/:categoryId", verifyUser, getCategorySales);
 route.get("/report/:shopId", verifyUser, getShopSales);
 route.get("/all", verifyUser, getgeneralsales);
 route.get("/user/:userId", verifyUser, getUserSales);
-route.post("/commission/payment", payUsercommission);
 route.post("/items/sale", verifyUser, makesales);
 export default route;

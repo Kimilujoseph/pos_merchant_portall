@@ -5,9 +5,9 @@ class phoneinventoryrepository {
   async createPhonewithFinaceDetails(payload) {
     try {
       const { phoneDetails, financeDetails, shopId, user } = payload;
-      console.log("phoneDetails", phoneDetails);
-      const newMobileProduct = await Promise.all([
-        this.createphoneStock({ ...phoneDetails }),
+      //console.log("phoneDetails", phoneDetails);
+      const newMobileProduct = await this.createphoneStock({ ...phoneDetails });
+      const createPhoneMetaData = await Promise.all([
         this.createFinanceDetails(newMobileProduct.id, financeDetails),
         this.createHistory({
           user,
@@ -70,7 +70,7 @@ class phoneinventoryrepository {
         throw new APIError(
           "Duplicate Key Error",
           STATUS_CODE.BAD_REQUEST,
-          `A product with the same ${err.meta.target} already exists.`
+          `A product with  ${IMEI} IMEI already exists.`
         );
       } else {
         throw new APIError(
@@ -303,6 +303,7 @@ class phoneinventoryrepository {
           CategoryId: true,
           productCost: true,
           commission: true,
+          IMEI: true,
         },
       });
       // const stockItem = await Mobile.findById(stockId).select('-history -tranferHistory');

@@ -8,11 +8,11 @@ const inventoryManagementSystem = new MobilemanagementService();
 const addNewPhoneProduct = async (req, res, next) => {
   try {
     const user = req.user;
-    if (user.role !== "superuser" && user.role !== "manager") {
+    if (!["superuser", "manager"].includes(user.role)) {
       throw new APIError(
-        "not authorised",
+        "Not authorised",
         STATUS_CODE.UNAUTHORIZED,
-        "not authorized to add new phone"
+        "not authorised to add new phone"
       );
     }
     const { phoneDetails, financeDetails } = req.body;
@@ -25,7 +25,7 @@ const addNewPhoneProduct = async (req, res, next) => {
       }
     );
     res.status(201).json({
-      message: "product added",
+      message: "product successfully added",
       data: newPhoneStock,
       error: false,
     });

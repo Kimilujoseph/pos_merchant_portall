@@ -4,6 +4,8 @@ import { usermanagemenRepository } from "../databases/repository/usermanagement-
 import { ShopmanagementRepository } from "../databases/repository/shop-repository.js";
 import { phoneinventoryrepository } from "../databases/repository/mobile-inventory-repository.js";
 import { CategoryManagementRepository } from "../databases/repository/category-contoller-repository.js";
+import { analyseSalesMetric } from "../helpers/analyticmetric.js";
+import { transformgeneralSale } from "../helpers/transformsales.js";
 import { APIError, STATUS_CODE } from "../Utils/app-error.js";
 
 class salesmanagment {
@@ -45,7 +47,7 @@ class salesmanagment {
         .reduce(
           ([sales, acc], sale) => {
             // console.log("#$#$", sale);
-            const transformed = this.transformgeneralSale(sale);
+            const transformed = transformgeneralSale(sale);
             //console.log("transformed sales", transformed);
             sales.push(transformed);
             acc.totalSales += Number(sale._sum.soldPrice);
@@ -72,7 +74,7 @@ class salesmanagment {
           ]
         );
       const [analytics, paginatedSales] = await Promise.all([
-        this.analyseSalesMetric(transformedSales),
+        analyseSalesMetric(transformedSales),
         Promise.resolve(transformedSales.slice(skip, skip + limit)),
       ]);
       //console.log("@@", paginatedSales);
@@ -93,15 +95,7 @@ class salesmanagment {
         },
       ];
     } catch (err) {
-      console.log("err", err);
-      if (err instanceof APIError) {
-        throw err;
-      }
-      throw new APIError(
-        "internal error",
-        STATUS_CODE.INTERNAL_ERROR,
-        err.message || "internal server error"
-      );
+      this.handleServiceError(err);
     }
   }
 
@@ -127,6 +121,7 @@ class salesmanagment {
           totals: {
             totalSales:
               Number(acc.totals.totalSales) + Number(result.totals.totalSales),
+
             totalProfit: acc.totals.totalProfit + result.totals.totalProfit,
             totalCommission:
               acc.totals.totalCommission + result.totals.totalCommission,
@@ -156,16 +151,12 @@ class salesmanagment {
           currentPage: page,
         },
         analytics: {
-          analytics: await this.analyseSalesMetric(combined.data),
+          analytics: analyseSalesMetric(combined.data),
         },
       };
     } catch (error) {
       //console.error("Error in getUserSales:", error);
-      throw new APIError(
-        "Failed to fetch sales data",
-        STATUS_CODE.INTERNAL_ERROR,
-        error.message
-      );
+      this.handleServiceError(error);
     }
   }
 
@@ -361,198 +352,12 @@ class salesmanagment {
         err.message || "Internal server error"
       );
     }
-    // Rest of the logic remains the same...
-  }
-
-  async analyseSalesMetric(salesData) {
-    try {
-      const productMetric = {};
-      const sellerMetric = {};
-
-      // Iterate through the sales dat
-      salesData.forEach((sale) => {
-        const {
-          soldprice,
-          totalprofit,
-          totaltransaction,
-          productDetails,
-          categoryDetails,
-          sellerDetails,
-          financeStatus,
-        } = sale;
-        //did some twisting so we can have transcation counted in terms of category
-        const productId = categoryDetails.itemName;
-        const sellerId = sellerDetails.id;
-        const productName = categoryDetails.itemName;
-        const sellerName = sellerDetails.name;
-
-        if (financeStatus === "pending") return;
-
-        // Update product metrics
-        if (!productMetric[productId]) {
-          productMetric[productId] = {
-            productName: productName,
-            totalSales: 0,
-            totaltransacted: 0,
-            netprofit: 0,
-          };
-        }
-
-        productMetric[productId].totalSales += soldprice;
-        productMetric[productId].totaltransacted += totaltransaction;
-        productMetric[productId].netprofit += totalprofit;
-
-        if (!sellerMetric[sellerId]) {
-          sellerMetric[sellerId] = {
-            sellerName: sellerName,
-            totalSales: 0,
-            netprofit: 0,
-            totaltransacted: 0,
-          };
-        }
-
-        sellerMetric[sellerId].totalSales += Number(soldprice);
-        sellerMetric[sellerId].netprofit += totalprofit;
-        sellerMetric[sellerId].totaltransacted += totaltransaction;
-      });
-
-      // Sort and get top 5 products
-      const productAnalytics = Object.values(productMetric)
-        .sort((a, b) => b.totalSales - a.totalSales)
-        .slice(0, 10);
-
-      // Get total number of products
-      const totalProducts = Object.keys(productMetric).length;
-
-      // Sort and get top 5 sellers
-      const sellerAnalytics = Object.values(sellerMetric)
-        .sort((a, b) => b.totalSales - a.totalSales)
-        .slice(0, 10);
-
-      // Get total number of sellers
-      const totalSellers = Object.keys(sellerMetric).length;
-
-      return { sellerAnalytics, productAnalytics, totalProducts, totalSellers };
-    } catch (err) {
-      if (err instanceof APIError) {
-        throw err;
-      }
-      throw new APIError(
-        "internal error",
-        STATUS_CODE.INTERNAL_ERROR,
-        err.message || "internal server error"
-      );
-    }
-  }
-
-  async paymentofcommission(salesId, amount) {
-    try {
-      const sale = await this.sales.findSalesById(salesId);
-      console.log("sales", sale);
-      if (amount > sale.commission) {
-        throw new Error("Amount exceeds the commission due");
-      } else if (amount - sales.commision !== 0) {
-        const updatedCommission = sale.commission - amount;
-        sale.commission = updatedCommission;
-        sale.commissionStatus = " still awaiting";
-      }
-      const updatedCommission = sale.commission - amount;
-      sale.commission = updatedCommission;
-      sale.commissionStatus = "paid";
-      const updatedSale = await this.sales.payCommission(salesId, sale);
-
-      // Record the commission paid in the category revenue
-      await this.sales.updatecategoryrevenue(sale.category, amount);
-
-      return updatedSale;
-    } catch (err) {
-      console.log("err", err);
-      if (err instanceof APIError) {
-        throw err;
-      }
-      throw new Error(`Error in service layer: ${err.message}`);
-    }
-  }
-  async calculateRevenueByCategory() {
-    try {
-      const categoryRevenues = await salesRepository.getCategoryRevenues();
-
-      const netIncome = categoryRevenues.map((categoryRevenue) => ({
-        category: categoryRevenue.category,
-        totalRevenue: categoryRevenue.totalRevenue,
-        totalCommission: categoryRevenue.totalCommission,
-        netIncome:
-          categoryRevenue.totalRevenue - categoryRevenue.totalCommission,
-      }));
-      return netIncome;
-    } catch (err) {
-      console.log("err", err);
-      if (err instanceof APIError) {
-        throw err;
-      }
-      throw new Error(`Error in service layer: ${err.message}`);
-    }
-  }
-
-  transformgeneralSale(sale) {
-    //console.log("sales#$##$", sale);
-    const financeStatus = sale.financeDetails.financeStatus;
-    const isFinance = financeStatus !== "N/A";
-    return {
-      soldprice: Number(sale._sum.soldPrice),
-      commission: sale._sum.commission,
-      totalprofit: sale._sum.profit,
-      totaltransaction: sale._count._all,
-      productDetails: this.normalizedProduct(sale.productDetails),
-      categoryDetails: this.normalizedCategoryDetails(sale.categoryDetails),
-      shopDetails: this.normalizedShopDetails(sale.shopDetails),
-      sellerDetails: {
-        name: sale.sellerDetails?.name,
-        id: sale.sellerDetails?.id,
-      },
-      saleType: isFinance ? "finance" : "direct",
-      financeDetails: sale.financeDetails,
-      createdAt: sale.createdAt,
-      financeStatus: sale.financeStatus,
-    };
-  }
-  normalizedProduct(details) {
-    return {
-      productID: details?.id,
-      batchNumber: details?.batchNumber,
-      productCost: details?.productCost,
-      productType: details?.itemType || details?.productType || "mobiles",
-    };
-  }
-  normalizedCategoryDetails(details) {
-    return {
-      categoryId: details?.id,
-      category: details?.itemType || "accessory",
-      itemName: details?.itemName,
-      itemModel: details?.itemModel,
-      brand: details?.brand,
-    };
-  }
-  normalizedShopDetails(details) {
-    return details
-      ? {
-          id: details.id,
-          name: details.shopName,
-          address: details.address,
-        }
-      : null;
-  }
-  normalizedSellerDetails(details) {
-    return details
-      ? {
-          id: details.id,
-          name: details.sellerName,
-        }
-      : null;
   }
   handleServiceError(err) {
-    if (err instanceof APIError) return err;
-    return new APIError(
+    if (err instanceof APIError) {
+      throw err;
+    }
+    throw new APIError(
       "internal_error",
       STATUS_CODE.INTERNAL_ERROR,
       err.message || "Internal server error"
