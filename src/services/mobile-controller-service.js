@@ -288,9 +288,8 @@ class MobilemanagementService {
           `IMEI ${mobileFound.IMEI} already sold please contact the admin`
         );
       }
-      console.log("#$#", validUpdates.productCost);
       if (validUpdates.productCost && validUpdates.commission) {
-        if (validUpdates.commission > validUpdates.productCost * 0.5) {
+        if (validUpdates.commission > validUpdates.productCost * 0.2) {
           throw new APIError(
             "Commission cannot exceed 50% of product cost",
             STATUS_CODE.BAD_REQUEST,
