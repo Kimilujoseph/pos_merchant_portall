@@ -138,15 +138,16 @@ const createnewproductupdate = async (req, res, next) => {
   try {
     const user = req.user;
     const userId = user.id;
-    if (user.role !== "manager" && user.role !== "superuser") {
+    const id = req.params.id;
+    const updates = req.body;
+
+    if (!["manager", "superuser"].includes(user.role)) {
       throw new APIError(
         "not authorised",
         STATUS_CODE.UNAUTHORIZED,
-        "not authorised to commit an update"
+        "Not authorised to commit an update"
       );
     }
-    const id = req.params.id;
-    const updates = req.body;
     // Call the service method to update the phone stock
     const updatedPhone = await inventoryManagementSystem.updatePhoneStock(
       id,
@@ -156,7 +157,7 @@ const createnewproductupdate = async (req, res, next) => {
 
     return res.status(200).json({
       status: 200,
-      // data: updatedPhone,
+      data: updatedPhone,
       message: "Phone stock updated successfully",
     });
   } catch (err) {

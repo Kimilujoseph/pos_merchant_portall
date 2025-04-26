@@ -8,6 +8,7 @@ import { ShopmanagementRepository } from "../databases/repository/shop-repositor
 import { Sales } from "../databases/repository/sales-repository.js";
 import { CategoryManagementRepository } from "../databases/repository/category-contoller-repository.js";
 import { APIError, STATUS_CODE } from "../Utils/app-error.js";
+import { validateUpdateInputs } from "../helpers/updateValidationHelper.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -248,14 +249,20 @@ class MobilemanagementService {
   }
   async updatePhoneStock(id, updates, userId) {
     try {
-      if (!id) {
+      const mobileId = Number(id);
+      const user = parseInt(userId, 10);
+      if (isNaN(mobileId)) {
         throw new APIError(
           "service error",
           STATUS_CODE.BAD_REQUEST,
-          "id not found"
+          "invalid value provided"
         );
       }
-      const shopFound = await this.shop.findShop({ name: "Kahawa 2323" });
+      const validUpdates = validateUpdateInputs(updates);
+      const [shopFound, mobileFound] = await Promise.all([
+        this.shop.findShop({ name: "Kahawa 2323" }),
+        this.mobile.findItem(mobileId),
+      ]);
       if (!shopFound) {
         throw new APIError(
           "Shop not found",
@@ -264,34 +271,40 @@ class MobilemanagementService {
         );
       }
       const shopId = shopFound.id;
-      const mobileId = parseInt(id, 10);
-      const user = parseInt(userId, 10);
-      const allowedFields = [
-        "IMEI",
-        "stockStatus",
-        "availableStock",
-        "commission",
-        "productcost",
-        "discount",
-      ];
-      const validateUpdateField = Object.keys(updates).filter((key) =>
-        allowedFields.includes(key)
-      );
-      if (validateUpdateField.length === 0) {
+      if (!mobileFound) {
         throw new APIError(
-          "service error",
-          STATUS_CODE.BAD_REQUEST,
-          "Invalid update fields"
+          "not found",
+          STATUS_CODE.NOT_FOUND,
+          "mobile not found"
         );
       }
-      // Update the phone stock
+      if (
+        mobileFound.stockStatus === "sold" &&
+        validUpdates.stockStatus !== "sold"
+      ) {
+        throw new APIError(
+          "BAD REQUEST",
+          STATUS_CODE.BAD_REQUEST,
+          `IMEI ${mobileFound.IMEI} already sold please contact the admin`
+        );
+      }
+      console.log("#$#", validUpdates.productCost);
+      if (validUpdates.productCost && validUpdates.commission) {
+        if (validUpdates.commission > validUpdates.productCost * 0.5) {
+          throw new APIError(
+            "Commission cannot exceed 50% of product cost",
+            STATUS_CODE.BAD_REQUEST,
+            "Commission cannot exceed 50% of product cost"
+          );
+        }
+      }
       const updatedPhone = await this.mobile.updatethephoneStock(
         mobileId,
-        updates,
+        validUpdates,
         user,
-        shopId
+        shopId,
+        mobileFound.IMEI
       );
-
       return updatedPhone;
     } catch (err) {
       console.log(err);

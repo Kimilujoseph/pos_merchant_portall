@@ -104,7 +104,7 @@ class distributionService {
       );
       const existingStock = shopAvailableStock.get(productId);
       //find whether the product exist in the shop
-      if (!existingStock) {
+      if (existingStock) {
         throw new APIError(
           "distribution error",
           STATUS_CODE.BAD_REQUEST,

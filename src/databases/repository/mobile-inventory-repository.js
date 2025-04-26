@@ -241,7 +241,7 @@ class phoneinventoryrepository {
       );
     }
   }
-  async updatethephoneStock(mobileId, updates, user, shopId) {
+  async updatethephoneStock(mobileId, updates, user, shopId, IMEI) {
     try {
       const updatedPhone = await prisma.mobiles.update({
         where: {
@@ -260,11 +260,11 @@ class phoneinventoryrepository {
       });
       return updatedPhone;
     } catch (err) {
-      if (err.code === 11000) {
+      if (err.code === "P2002") {
         throw new APIError(
           "Duplicate Key Error",
           STATUS_CODE.BAD_REQUEST,
-          "product already exists"
+          `A product with  ${IMEI} IMEI already exists.`
         );
       }
       throw new APIError(
@@ -337,43 +337,6 @@ class phoneinventoryrepository {
       );
     }
   }
-
-  //update sales
-  // async updatesalesofaphone({
-  //   id,
-  //   sellerId,
-  //   shopId,
-  //   status,
-  //   quantity,
-  //   seller,
-  // }) {
-  //   try {
-  //     const updatedSalesofthephone = await Mobile.findByIdAndUpdate(
-  //       id,
-  //       {
-  //         $set: { sellerId: sellerId, stockStatus: status },
-  //         $push: {
-  //           history: {
-  //             seller: seller,
-  //             shopId: shopId,
-  //             quantity: quantity,
-  //             type: "sold",
-  //           },
-  //         },
-  //       },
-  //       { new: true }
-  //     );
-  //     updatedSalesofthephone.save();
-  //     return updatedSalesofthephone;
-  //   } catch (err) {
-  //     throw new APIError(
-  //       "Database Error",
-  //       STATUS_CODE.INTERNAL_ERROR,
-  //       "internal server error"
-  //     );
-  //   }
-  // }
-  //find all accessory items to list them
 
   async findAllMobileStockAvailable(page, limit) {
     try {
