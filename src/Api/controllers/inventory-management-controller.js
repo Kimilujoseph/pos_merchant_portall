@@ -17,12 +17,12 @@ const createnewstock = async (req, res, next) => {
         "unauthorized",
         STATUS_CODE.UNAUTHORIZED,
         "You are not authorized to perform this action"
-      )
+      );
     }
     const itemData = {
       ...req.body,
-      user: parseInt(user.id, 10)
-    }
+      user: parseInt(user.id, 10),
+    };
     const newStock = await inventoryManagementSystem.createnewproduct(itemData);
     return res.status(201).json({
       status: 201,
@@ -30,7 +30,6 @@ const createnewstock = async (req, res, next) => {
       error: false,
     });
   } catch (err) {
-    console.log("@@EWE", err)
     if (err instanceof APIError) {
       return res
         .status(err.statusCode)
@@ -44,7 +43,7 @@ const createnewstock = async (req, res, next) => {
 const getProductProfile = async (req, res, next) => {
   try {
     const user = req.user;
-    const productId = parseInt(req.params.id, 10)
+    const productId = parseInt(req.params.id, 10);
     if (user.role !== "manager" && user.role !== "superuser") {
       throw new APIError(
         "UNAUTHORIZED",
@@ -61,7 +60,7 @@ const getProductProfile = async (req, res, next) => {
       message: productprofile,
     });
   } catch (err) {
-    console.log("@@!32", err)
+    console.log("@@!32", err);
     if (err instanceof APIError) {
       return res.status(err.statusCode).json({
         message: err.message,
@@ -125,7 +124,6 @@ const findSpecificProductTransferHistory = async (req, res, next) => {
 };
 //download the pdf file
 
-
 //first phase to deal with the accessory administartion
 const findAllAccessoryProduct = async (req, res, next) => {
   try {
@@ -149,8 +147,6 @@ const findAllAccessoryProduct = async (req, res, next) => {
     }
   }
 };
-
-
 
 const updateStock = async (req, res, next) => {
   try {
@@ -191,20 +187,21 @@ const updateStock = async (req, res, next) => {
 const confirmarrival = async (req, res, next) => {
   try {
     let userId;
-    let userName
+    let userName;
     const user = req.user;
     userId = parseInt(user.id, 10);
-    userName = user.name
+    userName = user.name;
     const confirmDetails = {
       ...req.body,
       userId,
-    }
-    const updateproductTransfer = await inventoryManagementSystem.confirmDistribution(confirmDetails);
+    };
+    const updateproductTransfer =
+      await inventoryManagementSystem.confirmDistribution(confirmDetails);
     return res
       .status(200)
       .json({ messsage: "successfully confirmed arrival", error: false });
   } catch (err) {
-    console.log("@@#", err)
+    console.log("@@#", err);
     if (err instanceof APIError) {
       return res
         .status(err.statusCode)
@@ -222,13 +219,15 @@ const createnewTransfer = async (req, res, next) => {
   try {
     const user = req.user;
     const userId = user.id;
-    const userName = user.name
+    const userName = user.name;
     const transferDetails = {
       ...req.body,
       userName,
-      userId
-    }
-    const newTransfer = await inventoryManagementSystem.createnewTransfer(transferDetails);
+      userId,
+    };
+    const newTransfer = await inventoryManagementSystem.createnewTransfer(
+      transferDetails
+    );
 
     return res.status(200).json({
       status: 200,

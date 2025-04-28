@@ -7,8 +7,6 @@ import { APIError, STATUS_CODE } from "../../Utils/app-error.js";
 class InventorymanagementRepository {
   async createAccesoryProduct({ accessoryDetails, user, shopId }) {
     try {
-
-      console.log("accessory2324", accessoryDetails)
       const newAccessory = await this.createnewAccessoryStock(accessoryDetails);
       await this.createHistory({
         shopId,
@@ -28,7 +26,8 @@ class InventorymanagementRepository {
   }
   async createnewAccessoryStock(accessoryDetails) {
     try {
-      const { categoryId,
+      const {
+        categoryId,
         availableStock,
         commission,
         discount,
@@ -37,7 +36,8 @@ class InventorymanagementRepository {
         supplierName,
         productType,
         stockStatus,
-        batchNumber } = accessoryDetails
+        batchNumber,
+      } = accessoryDetails;
       const newAccessory = await prisma.accessories.create({
         data: {
           CategoryId: categoryId,
@@ -50,11 +50,17 @@ class InventorymanagementRepository {
           supplierName: supplierName,
           productType: productType,
           stockStatus: stockStatus,
-        }
+        },
       });
       return newAccessory;
     } catch (err) {
-      console.log("service error", err);
+      if (err.code === "P2002") {
+        throw new APIError(
+          "Duplicate Key Error",
+          STATUS_CODE.BAD_REQUEST,
+          `A product with the same batch ${accessoryDetails.batchNumber} exists`
+        );
+      }
       throw new APIError(
         "creating product error",
         STATUS_CODE.INTERNAL_ERROR,
@@ -75,7 +81,7 @@ class InventorymanagementRepository {
       });
       return createHistory;
     } catch (err) {
-      console.log("err", err)
+      console.log("err", err);
       throw new APIError(
         "Database Error",
         STATUS_CODE.INTERNAL_ERROR,
@@ -160,19 +166,19 @@ class InventorymanagementRepository {
     try {
       const availableStock = await prisma.accessoryItems.findMany({
         where: {
-          accessoryID: productId
+          accessoryID: productId,
         },
         include: {
           shops: {
             select: {
-              shopName: true
-            }
-          }
-        }
-      })
-      return availableStock
+              shopName: true,
+            },
+          },
+        },
+      });
+      return availableStock;
     } catch (err) {
-      console.log("serviceerrr", err)
+      console.log("serviceerrr", err);
       if (err instanceof APIError) {
         throw err;
       }
@@ -228,7 +234,7 @@ class InventorymanagementRepository {
 
       return { stockAvailable, totalItems };
     } catch (err) {
-      console.log("err", err)
+      console.log("err", err);
       if (err instanceof APIError) {
         throw err;
       }
@@ -285,7 +291,6 @@ class InventorymanagementRepository {
   }
   async capturespecificproductforhistory({ id, page, limit }) {
     try {
-
       const productId = parseInt(id, 10);
       const productHistoryFound = await prisma.accessoryHistory.findMany({
         where: {
@@ -300,24 +305,23 @@ class InventorymanagementRepository {
           actors: {
             select: {
               name: true,
-              email: true
-            }
+              email: true,
+            },
           },
           shops: {
             select: {
               shopName: true,
               address: true,
             },
-          }
-
-        }
+          },
+        },
       });
       if (!productHistoryFound) {
         throw new APIError("not found", STATUS_CODE.NOT_FOUND, "not found");
       }
       return productHistoryFound;
     } catch (err) {
-      console.log(err)
+      console.log(err);
       if (err instanceof APIError) {
         throw err;
       }
@@ -331,25 +335,26 @@ class InventorymanagementRepository {
 
   async createTransferHistory(id, transferData) {
     try {
-      const createdTransferHistory = await prisma.accessorytransferhistory.create({
-        data: {
-          quantity: transferData.quantity,
-          status: transferData.status,
-          type: transferData.type,
-          shops_accessorytransferhistory_fromshopToshops: {
-            connect: { id: transferData.fromShop },
+      const createdTransferHistory =
+        await prisma.accessorytransferhistory.create({
+          data: {
+            quantity: transferData.quantity,
+            status: transferData.status,
+            type: transferData.type,
+            shops_accessorytransferhistory_fromshopToshops: {
+              connect: { id: transferData.fromShop },
+            },
+            shops_accessorytransferhistory_toshopToshops: {
+              connect: { id: transferData.toShop },
+            },
+            actors_accessorytransferhistory_transferdByToactors: {
+              connect: { id: transferData.userId },
+            },
+            accessories: {
+              connect: { id: transferData.productId },
+            },
           },
-          shops_accessorytransferhistory_toshopToshops: {
-            connect: { id: transferData.toShop },
-          },
-          actors_accessorytransferhistory_transferdByToactors: {
-            connect: { id: transferData.userId },
-          },
-          accessories: {
-            connect: { id: transferData.productId },
-          },
-        },
-      });
+        });
       return createdTransferHistory;
     } catch (err) {
       console.log("err", err);
@@ -379,7 +384,7 @@ class InventorymanagementRepository {
         "database update error",
         STATUS_CODE.INTERNAL_ERROR,
         "internal server error"
-      )
+      );
     }
   }
   async updateStockQuantityInAshop(id, quatity) {
@@ -399,26 +404,25 @@ class InventorymanagementRepository {
         "database update error",
         STATUS_CODE.INTERNAL_ERROR,
         "internal server error"
-      )
+      );
     }
   }
   async updateTransferHistory(id, updates) {
     try {
-      const updatedTransferHistory = await prisma.accessorytransferhistory.update({
-        where: {
-          id: id,
-        },
-        data: updates,
-      });
+      const updatedTransferHistory =
+        await prisma.accessorytransferhistory.update({
+          where: {
+            id: id,
+          },
+          data: updates,
+        });
       return updatedTransferHistory;
-    }
-
-    catch (err) {
+    } catch (err) {
       throw new APIError(
         "update error",
         STATUS_CODE.INTERNAL_ERROR,
         "internal server error"
-      )
+      );
     }
   }
   async searchAccessories(searchItem) {
@@ -483,11 +487,19 @@ class InventorymanagementRepository {
 
       // Step 4: Filter results to ensure case-insensitive match
       const filteredResults = combinedResults.filter((accessory) => {
-        const batchNumberMatch = accessory.batchNumber?.toLowerCase().includes(lowercaseSearchItem);
+        const batchNumberMatch = accessory.batchNumber
+          ?.toLowerCase()
+          .includes(lowercaseSearchItem);
         const categoryMatch =
-          accessory.categories.itemName?.toLowerCase().includes(lowercaseSearchItem) ||
-          accessory.categories.itemModel?.toLowerCase().includes(lowercaseSearchItem) ||
-          accessory.categories.brand?.toLowerCase().includes(lowercaseSearchItem);
+          accessory.categories.itemName
+            ?.toLowerCase()
+            .includes(lowercaseSearchItem) ||
+          accessory.categories.itemModel
+            ?.toLowerCase()
+            .includes(lowercaseSearchItem) ||
+          accessory.categories.brand
+            ?.toLowerCase()
+            .includes(lowercaseSearchItem);
 
         return batchNumberMatch || categoryMatch;
       });
@@ -504,14 +516,12 @@ class InventorymanagementRepository {
   }
 
   async updateProductById(id, updates) {
-
     try {
       const updatedProduct = await prisma.accessories.update({
         where: { id },
         data: {
           ...updates,
           updatedAt: new Date(),
-
         },
       });
 

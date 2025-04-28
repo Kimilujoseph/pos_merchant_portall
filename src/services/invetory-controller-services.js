@@ -34,7 +34,7 @@ class InvetorymanagementService {
         productType,
         user,
       } = stockDetails;
-      const categoryId = parseInt(CategoryId, 10)
+      const categoryId = parseInt(CategoryId, 10);
 
       const category = await this.category.getCategoryById(categoryId);
       if (!category) {
@@ -63,21 +63,22 @@ class InvetorymanagementService {
         faultyItems,
         supplierName,
         productType,
-
-        batchNumber
-      }
+        batchNumber,
+      };
       const payload = {
         accessoryDetails,
         user,
-        shopId
-      }
-      const newProduct = await this.repository.createAccesoryProduct(
-        { accessoryDetails, user, shopId }
-      );
+        shopId,
+      };
+      const newProduct = await this.repository.createAccesoryProduct({
+        accessoryDetails,
+        user,
+        shopId,
+      });
       //add the product to its category
       return newProduct;
     } catch (err) {
-      console.log("service error", err)
+      console.log("service error", err);
       if (err instanceof APIError) {
         throw err;
       }
@@ -85,34 +86,26 @@ class InvetorymanagementService {
     }
   }
 
-
   // Example usage
-
-
 
   async getProductProfile(productId) {
     try {
       //   const confirmedStock = presentShops.filter(
       //     (shop) => shop.stockStatus === "confirmed"
-      //   ) 
+      //   )
       //  const  pendingStock = presentShops.filter(
       //     (shop) => shop.stockStatus === "pending"
       //   );
-      const product = await this.repository.findProductById(
-        productId,
-      );
+      const product = await this.repository.findProductById(productId);
       return product;
-
     } catch (err) {
-      console.log("serviceerrr", err)
+      console.log("serviceerrr", err);
       if (err instanceof APIError) {
         throw err;
       }
       throw new APIError("service error", STATUS_CODE.INTERNAL_ERROR, err);
     }
   }
-
-
 
   async getproductTransferHistory({ id, page, limit }) {
     try {
@@ -185,10 +178,7 @@ class InvetorymanagementService {
       if (err instanceof APIError) {
         throw err;
       }
-      throw new APIError(
-        "item service error",
-        STATUS_CODE.INTERNAL_ERROR, x
-      );
+      throw new APIError("item service error", STATUS_CODE.INTERNAL_ERROR, x);
     }
   }
 
@@ -230,12 +220,15 @@ class InvetorymanagementService {
           "Product not found"
         );
       }
-      if (accessoryProduct.stockStatus === "deleted" || accessoryProduct.stockStatus === "suspended") {
+      if (
+        accessoryProduct.stockStatus === "deleted" ||
+        accessoryProduct.stockStatus === "suspended"
+      ) {
         throw new APIError(
           "Bad Request",
           STATUS_CODE.BAD_REQUEST,
           `this product is ${accessoryProduct.stockStatus}`
-        )
+        );
       }
       if (!shopFound) {
         throw new APIError(
@@ -247,7 +240,7 @@ class InvetorymanagementService {
 
       const filterdAccessory = shopFound.accessoryItems.filter((item) => {
         return item.accessoryID !== null;
-      })
+      });
       const shopId = shopFound.id;
       const sellerAssinged = shopFound.assignment.find(
         (seller) => seller.actors.id === userId
@@ -290,16 +283,20 @@ class InvetorymanagementService {
       const updates = {
         status: "confirmed",
         confirmedBy: userId,
-        updatedAt: new Date()
-      }
-      const updateTransferHistory = await this.repository.updateTransferHistory(transferproductId, updates)
-      const updateConfirmationOfAccessory = await this.shop.updateConfirmationOfAccessory(
-        shopId,
+        updatedAt: new Date(),
+      };
+      const updateTransferHistory = await this.repository.updateTransferHistory(
         transferproductId,
-        userId
-      )
+        updates
+      );
+      const updateConfirmationOfAccessory =
+        await this.shop.updateConfirmationOfAccessory(
+          shopId,
+          transferproductId,
+          userId
+        );
     } catch (err) {
-      console.log("##service err", err)
+      console.log("##service err", err);
       if (err instanceof APIError) {
         throw err;
       }
@@ -328,7 +325,7 @@ class InvetorymanagementService {
         "commission",
         "productcost",
         "discount",
-        "stockStatus"
+        "stockStatus",
       ];
       //the object.keys()  will extract keys in the updates argument passed
       //the filter method will check if the updates property are legit
@@ -363,7 +360,7 @@ class InvetorymanagementService {
       );
       return searchResult;
     } catch (err) {
-      console.log(err)
+      console.log(err);
       if (err instanceof APIError) {
         throw err;
       }
