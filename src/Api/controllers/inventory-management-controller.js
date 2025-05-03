@@ -4,10 +4,12 @@ import moment from "moment";
 import { fileURLToPath } from "url";
 import { InvetorymanagementService } from "../../services/invetory-controller-services.js";
 import { APIError, STATUS_CODE } from "../../Utils/app-error.js";
+import { ConfirmAccessorymanagementService } from "../../services/confirmAccessories_service.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const inventoryManagementSystem = new InvetorymanagementService();
+const confirmServices = new ConfirmAccessorymanagementService();
 
 const createnewstock = async (req, res, next) => {
   try {
@@ -195,8 +197,9 @@ const confirmarrival = async (req, res, next) => {
       ...req.body,
       userId,
     };
-    const updateproductTransfer =
-      await inventoryManagementSystem.confirmDistribution(confirmDetails);
+    const updateproductTransfer = await confirmServices.confirmDistribution(
+      confirmDetails
+    );
     return res
       .status(200)
       .json({ messsage: "successfully confirmed arrival", error: false });

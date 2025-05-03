@@ -44,11 +44,11 @@ class ConfirmAccessorymanagementService {
         );
       }
       let [accessoryProduct, shopFound] = await Promise.all([
-        this.repository.findProductById(stockId),
-        this.shop.findShop({ name: shopname }),
+        this.repository.inventory.findProductById(stockId),
+        this.repository.shop.findShop({ name: shopname }),
       ]);
 
-      this.validationProcess(accessoryProduct, shopFound);
+      this.validationProcess(accessoryProduct, shopFound, parsedUserId);
       this.findTheAccessory(shopFound, parsedTransferId, parsedQuantity);
       const shopId = parseInt(shopFound.id);
       await this.transferProcess(parsedTransferId, parsedUserId, shopId);
@@ -64,7 +64,7 @@ class ConfirmAccessorymanagementService {
     }
   }
 
-  validationProcess(accessoryProduct, shopFound, userId) {
+  validationProcess(accessoryProduct, shopFound, parsedUserId) {
     if (!accessoryProduct) {
       throw new APIError(
         "Product not found",
@@ -82,8 +82,9 @@ class ConfirmAccessorymanagementService {
     if (!shopFound) {
       throw new APIError("not found", STATUS_CODE.NOT_FOUND, "SHOP NOT FOUND");
     }
-
-    if (!shopFound.assignment.some((seller) => seller.actors.id === userId)) {
+    if (
+      !shopFound.assignment.some((seller) => seller.actors.id === parsedUserId)
+    ) {
       throw new APIError(
         "Unauthorized",
         STATUS_CODE.UNAUTHORIZED,
@@ -94,8 +95,9 @@ class ConfirmAccessorymanagementService {
 
   findTheAccessory(shopFound, parsedTransferId, quantity) {
     const newAccessory = shopFound.accessoryItems.find((item) => {
-      item.accessoryID !== null && item.transferID === parsedTransferId;
+      return item.accessoryID !== null && item.transferId === parsedTransferId;
     });
+    console.log("#$#", parsedTransferId);
     if (!newAccessory) {
       throw new APIError(
         "not found",
