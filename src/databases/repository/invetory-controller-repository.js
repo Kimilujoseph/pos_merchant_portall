@@ -5,7 +5,7 @@ const prisma = new PrismaClient();
 import { APIError, STATUS_CODE } from "../../Utils/app-error.js";
 
 class InventorymanagementRepository {
-  async createAccesoryProduct({ accessoryDetails, user, shopId }) {
+  async createAccesoryProduct(accessoryDetails, user, shopId) {
     try {
       const newAccessory = await this.createnewAccessoryStock(accessoryDetails);
       await this.createHistory({
@@ -16,7 +16,6 @@ class InventorymanagementRepository {
         type: "new stock",
       });
     } catch (err) {
-      console.log("service error", err);
       throw new APIError(
         "creating product error",
         STATUS_CODE.INTERNAL_ERROR,
@@ -27,7 +26,7 @@ class InventorymanagementRepository {
   async createnewAccessoryStock(accessoryDetails) {
     try {
       const {
-        categoryId,
+        CategoryId,
         availableStock,
         commission,
         discount,
@@ -40,7 +39,7 @@ class InventorymanagementRepository {
       } = accessoryDetails;
       const newAccessory = await prisma.accessories.create({
         data: {
-          CategoryId: categoryId,
+          CategoryId: CategoryId,
           batchNumber: batchNumber,
           availableStock: availableStock,
           discount: discount,

@@ -8,6 +8,7 @@ import { ShopmanagementRepository } from "../databases/repository/shop-repositor
 import { CategoryManagementRepository } from "../databases/repository/category-contoller-repository.js";
 import { Sales } from "../databases/repository/sales-repository.js";
 import { APIError, STATUS_CODE } from "../Utils/app-error.js";
+import { validateItemsInputs } from "../helpers/updateValidationHelper.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -21,9 +22,9 @@ class InvetorymanagementService {
   }
   async createnewproduct(stockDetails) {
     try {
-      const { CategoryId } = stockDetails;
-      const categoryId = parseInt(CategoryId, 10);
-      const category = await this.category.getCategoryById(categoryId);
+      const validatedInputs = validateItemsInputs(stockDetails);
+      const { CategoryId, user } = validatedInputs;
+      const category = await this.category.getCategoryById(CategoryId);
       if (!category) {
         throw new APIError(
           "Invalid category",
@@ -40,37 +41,21 @@ class InvetorymanagementService {
         );
       }
       const shopId = shopFound.id;
-      const payload = {
-        accessoryDetails,
+      const newProduct = await this.repository.createAccesoryProduct(
+        validatedInputs,
         user,
-        shopId,
-      };
-      const newProduct = await this.repository.createAccesoryProduct({
-        accessoryDetails,
-        user,
-        shopId,
-      });
-      //add the product to its category
+        shopId
+      );
       return newProduct;
     } catch (err) {
-      console.log("service error", err);
       if (err instanceof APIError) {
         throw err;
       }
       throw new APIError("service error", STATUS_CODE.INTERNAL_ERROR, err);
     }
   }
-
-  // Example usage
-
   async getProductProfile(productId) {
     try {
-      //   const confirmedStock = presentShops.filter(
-      //     (shop) => shop.stockStatus === "confirmed"
-      //   )
-      //  const  pendingStock = presentShops.filter(
-      //     (shop) => shop.stockStatus === "pending"
-      //   );
       const product = await this.repository.findProductById(productId);
       return product;
     } catch (err) {
