@@ -1,4 +1,4 @@
-import { APIError, STATUS_CODE } from "../Utils/app-error.js";
+import { APIError, STATUS_CODE } from "../Utils/app-error.js  ";
 const validateUpdateInputs = (updates) => {
   //lets update the  update objetc first
   if (
@@ -16,7 +16,8 @@ const validateUpdateInputs = (updates) => {
   const VALID_OBJECT = {
     IMEI: (value) => typeof value === "string" && value.length <= 15,
     stockStatus: (value) =>
-      typeof value === "string" && ["faulty", "reserved"].includes(value),
+      typeof value === "string" &&
+      ["faulty", "reserved", "available"].includes(value),
     commission: (value) => !isNaN(value) && value >= 0,
     productCost: (value) => !isNaN(value) && value >= 0,
     discount: (value) => !isNaN(value) && value >= 0,
@@ -48,8 +49,62 @@ const validateUpdateInputs = (updates) => {
       ? Number(value)
       : value;
   }
-
   return validUpdates;
 };
 
-export { validateUpdateInputs };
+const validateeAccessoryInputs = (accessoryDetails) => {
+  if (
+    !accessoryDetails ||
+    typeof accessoryDetails !== "object" ||
+    Object.keys(accessoryDetails).length === 0
+  ) {
+    throw new APIError(
+      "service error",
+      STATUS_CODE.BAD_REQUEST,
+      "DATA PROVIDED IS NOT VALID"
+    );
+  }
+  const validObjects = {
+    categoryId: (value) => !isNaN(value) && value >= 0,
+    availbleStock: (value) => !isNaN(value) && value >= 0,
+    stockStatus: (value) =>
+      ["availble", "suspended"].includes(value) && typeof value === "string",
+    commission: (value) => !isNaN(value) && value >= 0,
+    productcost: (value) => !isNaN(value) && value >= 0,
+    faultyItems: (value) => !isNaN(value) && value >= 0,
+    supplierName: (value) => !isNaN(value) && value >= 0,
+    productType: (value) =>
+      typeof value === "string" && ["accessories", "mobiles"].includes(value),
+    batchNumber: (value) => typeof value === "string",
+  };
+  const validValues = {};
+  for ([field, value] of Object.entries(accessoryDetails)) {
+    if (!validObjects[field]) {
+      throw new APIError(
+        "bad request",
+        STATUS_CODE.BAD_REQUEST,
+        `invalid field ${field} provided`
+      );
+    }
+
+    if (!validObjects[field](value)) {
+      throw new APIError(
+        "bad request",
+        STATUS_CODE.BAD_REQUEST,
+        `invalid value for ${field} provided`
+      );
+    }
+    validValues[field] = [
+      "availbleStock",
+      "commission",
+      "productcost",
+      "faultyItems",
+    ].includes(values)
+      ? Number(value)
+      : value;
+  }
+
+  return validValues;
+};
+
+export { validateUpdateInputs, validateeAccessoryInputs };

@@ -21,21 +21,8 @@ class InvetorymanagementService {
   }
   async createnewproduct(stockDetails) {
     try {
-      const {
-        CategoryId,
-        availableStock,
-        commission,
-        discount,
-        productcost,
-        faultyItems,
-        stockStatus,
-        supplierName,
-        batchNumber,
-        productType,
-        user,
-      } = stockDetails;
+      const { CategoryId } = stockDetails;
       const categoryId = parseInt(CategoryId, 10);
-
       const category = await this.category.getCategoryById(categoryId);
       if (!category) {
         throw new APIError(
@@ -53,18 +40,6 @@ class InvetorymanagementService {
         );
       }
       const shopId = shopFound.id;
-      const accessoryDetails = {
-        categoryId,
-        availableStock,
-        stockStatus,
-        commission,
-        discount,
-        productcost,
-        faultyItems,
-        supplierName,
-        productType,
-        batchNumber,
-      };
       const payload = {
         accessoryDetails,
         user,
