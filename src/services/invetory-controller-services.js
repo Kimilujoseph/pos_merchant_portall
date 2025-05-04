@@ -1,8 +1,5 @@
-import { promises as fs } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import bwipjs from "bwip-js";
-import { PDFDocument, rgb } from "pdf-lib";
 import { InventorymanagementRepository } from "../databases/repository/invetory-controller-repository.js";
 import { ShopmanagementRepository } from "../databases/repository/shop-repository.js";
 import { CategoryManagementRepository } from "../databases/repository/category-contoller-repository.js";
@@ -161,113 +158,6 @@ class InvetorymanagementService {
     }
   }
 
-  async confirmDistribution(confirmdeleliverydetails) {
-    try {
-      const { shopname, userId, productId, quantity, transferId, userName } =
-        confirmdeleliverydetails;
-      const stockId = parseInt(productId, 10);
-      const transferproductId = parseInt(transferId, 10);
-      const parsedQuanity = parseInt(quantity);
-      //lets make a  parallel access to the database
-      let [accessoryProduct, shopFound] = await Promise.all([
-        this.repository.findProductById(stockId),
-        this.shop.findShop({ name: shopname }),
-      ]);
-      if (!accessoryProduct) {
-        throw new APIError(
-          "Product not found",
-          STATUS_CODE.NOT_FOUND,
-          "Product not found"
-        );
-      }
-      if (
-        accessoryProduct.stockStatus === "deleted" ||
-        accessoryProduct.stockStatus === "suspended"
-      ) {
-        throw new APIError(
-          "Bad Request",
-          STATUS_CODE.BAD_REQUEST,
-          `this product is ${accessoryProduct.stockStatus}`
-        );
-      }
-      if (!shopFound) {
-        throw new APIError(
-          "not found",
-          STATUS_CODE.NOT_FOUND,
-          "SHOP NOT FOUND"
-        );
-      }
-
-      const filterdAccessory = shopFound.accessoryItems.filter((item) => {
-        return item.accessoryID !== null;
-      });
-      const shopId = shopFound.id;
-      const sellerAssinged = shopFound.assignment.find(
-        (seller) => seller.actors.id === userId
-      );
-      if (!sellerAssinged) {
-        throw new APIError(
-          "Unauthorized",
-          STATUS_CODE.UNAUTHORIZED,
-          "You are not authorized to confirm arrival"
-        );
-      }
-      const newAccessory = filterdAccessory.find(
-        (accessory) => accessory.transferId === transferproductId
-      );
-
-      const newAccessoryId = newAccessory.id;
-
-      if (!newAccessory) {
-        throw new APIError(
-          "not found",
-          STATUS_CODE.NOT_FOUND,
-          " NEW ACCESSORY  NOT FOUND"
-        );
-      }
-
-      if (newAccessory.status === "confirmed") {
-        throw new APIError(
-          "not found",
-          STATUS_CODE.NOT_FOUND,
-          "ACCESSORY ALREADY CONFIRMED"
-        );
-      }
-      if (newAccessory.quantity < quantity) {
-        throw new APIError(
-          "not found",
-          STATUS_CODE.NOT_FOUND,
-          "NOT ENOUGH QUANTITY"
-        );
-      }
-      const updates = {
-        status: "confirmed",
-        confirmedBy: userId,
-        updatedAt: new Date(),
-      };
-      const updateTransferHistory = await this.repository.updateTransferHistory(
-        transferproductId,
-        updates
-      );
-      const updateConfirmationOfAccessory =
-        await this.shop.updateConfirmationOfAccessory(
-          shopId,
-          transferproductId,
-          userId
-        );
-    } catch (err) {
-      console.log("##service err", err);
-      if (err instanceof APIError) {
-        throw err;
-      }
-      throw new APIError(
-        "Distribution service error",
-        STATUS_CODE.INTERNAL_ERROR,
-        "Internal server error"
-      );
-    }
-  }
-
   async updateProduct(id, updates) {
     try {
       if (!id) {
@@ -311,7 +201,6 @@ class InvetorymanagementService {
       );
     }
   }
-
   async searchForAccessory(searchItem) {
     try {
       console.log("searchItem", searchItem);

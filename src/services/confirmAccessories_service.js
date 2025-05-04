@@ -97,7 +97,6 @@ class ConfirmAccessorymanagementService {
     const newAccessory = shopFound.accessoryItems.find((item) => {
       return item.accessoryID !== null && item.transferId === parsedTransferId;
     });
-    console.log("#$#", parsedTransferId);
     if (!newAccessory) {
       throw new APIError(
         "not found",
