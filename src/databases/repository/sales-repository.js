@@ -64,87 +64,70 @@ class Sales {
       );
     }
   }
-
-  async findSales({ salesTable, startDate, endDate }) {
+  async findSales({ salesTable, startDate, endDate, page, limit }) {
     try {
-      // Determine which Prisma model to use based on sales table
-
-      const salesModel =
-        salesTable === "mobilesales"
-          ? prisma.mobilesales
-          : prisma.accessorysales;
-
-      const results = await salesModel.groupBy({
-        by: [
-          "productID",
-          "shopID",
-          "sellerId",
-          "createdAt",
-          "categoryId",
-          "financeStatus",
-          "financeAmount",
-          "financer",
-        ],
-        where: {
-          createdAt: {
-            gte: startDate,
-            lte: endDate,
-          },
-        },
-
-        _sum: {
-          soldPrice: true,
-          profit: true,
-          commission: true,
-        },
-        _count: {
-          _all: true,
-        },
-        orderBy: {
-          createdAt: "desc",
-        },
-      });
-
-      //lets create an object of unique so we can collect the data in batches
-      let uniqueIds = {
-        //with the new Set instatiation we won't have repeating values
-        productID: results ? [...new Set(results.map((s) => s.productID))] : [],
-        sellerId: results ? [...new Set(results.map((s) => s.sellerId))] : [],
-        categoryId: results
-          ? [...new Set(results.map((s) => s.categoryId))]
-          : [],
-        shopId: results ? [...new Set(results.map((r) => r.shopID))] : [],
+      const salesModel = prisma[salesTable];
+      //const skip = (page - 1) * limit;
+      const whereClause = {
+        createdAt: { gte: startDate, lte: endDate },
       };
 
-      //lets have a batch fetching of items
-
-      const [products, shops, sellers, category] = await Promise.all([
-        this.getProductDetails(salesTable, uniqueIds.productID),
-        prisma.shops.findMany({ where: { id: { in: uniqueIds.shopId } } }),
-        prisma.actors.findMany({ where: { id: { in: uniqueIds.sellerId } } }),
-        prisma.categories.findMany({
-          where: { id: { in: uniqueIds.categoryId } },
+      // Dynamic include based on sales table
+      const includeClause =
+        salesTable === "mobilesales"
+          ? {
+              mobiles: true,
+              shops: true,
+              categories: true,
+              actors: true,
+            }
+          : {
+              accessories: true,
+              shops: true,
+              categories: true,
+              actors: true,
+            };
+      const [results, totals] = await Promise.all([
+        salesModel.findMany({
+          where: whereClause,
+          include: includeClause,
+          orderBy: { createdAt: "desc" },
+        }),
+        salesModel.aggregate({
+          where: whereClause,
+          _sum: {
+            soldPrice: true,
+            profit: true,
+            commission: true,
+          },
+          _count: true,
         }),
       ]);
 
-      //create a  Map look up which improve effeciency to O(1);
-      const productMap = new Map(products.map((p) => [p.id, p]));
-      const shopMap = new Map(shops.map((s) => [s.id, s]));
-      const sellerMap = new Map(sellers.map((s) => [s.id, s]));
-      const categoryMap = new Map(category.map((c) => [c.id, c]));
-
-      const withRelations = results.map((sale) => ({
+      // Transformation matching findUserSales' transformUserSale pattern
+      const transformSale = (sale) => ({
         ...sale,
-        productDetails: productMap.get(sale.productID) || null,
-        shopDetails: shopMap.get(sale.shopID) || null,
-        sellerDetails: sellerMap.get(sale.sellerId) || null,
-        categoryDetails: categoryMap.get(sale.categoryId) || null,
+        productDetails:
+          salesTable === "mobilesales" ? sale.mobiles : sale.accessories,
+        shopDetails: sale.shops,
+        sellerDetails: sale.actors,
+        categoryDetails: sale.categories,
         financeDetails: this.mapFinanceDetails(sale),
-      }));
-      //console.log("@@#withrelation", withRelations);
-      return { generalReport: withRelations };
+      });
+
+      //.log("#$#$#$", results);
+
+      return {
+        data: results.map(transformSale),
+        totals: {
+          totalSales: Number(totals._sum.soldPrice) || 0,
+          totalProfit: totals._sum.profit || 0,
+          totalCommission: totals._sum.commission || 0,
+          totalItems: totals._count || 0,
+        },
+      };
     } catch (err) {
-      console.log("err", err);
+      console.error("Database error:", err);
       throw new APIError(
         "Database error",
         STATUS_CODE.INTERNAL_ERROR,
@@ -152,7 +135,6 @@ class Sales {
       );
     }
   }
-
   async getProductDetails(salesTable, productID) {
     if (!Array.isArray(productID)) {
       throw new APIError(

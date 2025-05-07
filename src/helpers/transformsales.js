@@ -1,89 +1,48 @@
-const transformSales = (salesArray) => {
-  if (!Array.isArray(salesArray.sales)) {
-    console.warn("Invalid sales data passed to transformSales");
-    return [];
-  }
-  //console.log("sales found", salesArray.sales);
-  return salesArray.sales.map((sale) => ({
-    soldprice: sale.soldprice,
-    netprofit: sale.totalprofit,
-    commission: sale.commission,
-    productcost: Number(sale.productDetails?.productCost) || 0,
-    productmodel: sale.categoryDetails?.itemModel || "N/A",
-    productname: sale.categoryDetails?.itemName || "Unknown",
-    totalnetprice: sale.soldprice,
-    totalsoldunits: sale.totaltransaction,
-    totaltransaction: sale.totaltransaction,
+const transformSales = (rawSale) => {
+  // Base transformation
+  const base = {
+    soldprice: Number(rawSale.soldPrice),
+    netprofit: rawSale.profit,
+    commission: rawSale.commission,
+    productcost: Number(
+      rawSale.mobiles?.productCost || rawSale.accessories?.productCost || 0
+    ),
+    productmodel: rawSale.categories?.itemModel || "N/A",
+    productname: rawSale.categories?.itemName || "Unknown",
+    totalnetprice: Number(rawSale.soldPrice),
+    totalsoldunits: rawSale.quantity || 1,
+    totaltransaction: 1,
     _id: {
-      productId: sale.productDetails?.productID || null,
-      sellerId: sale.sellerDetails?.id || null,
-      shopId: sale.shopDetails?.id || null,
+      productId: rawSale.productID || null,
+      sellerId: rawSale.sellerId || null,
+      shopId: rawSale.shopID || null,
     },
-    financeDetails: sale.financeDetails || {},
-    CategoryId: sale.categoryDetails?.categoryId || null,
-    createdAt: sale.createdAt || new Date().toISOString(),
-    batchNumber: sale.productDetails?.batchNumber || "N/A",
-    category: sale.productDetails?.productType || "Uncategorized",
-    sellername: sale.sellerDetails?.name || "Unknown Seller",
-    shopname: sale.shopDetails?.name || "Unknown Shop",
-  }));
+    financeDetails: {
+      financeStatus: rawSale.financeStatus || "N/A",
+      financeAmount: Number(rawSale.financeAmount) || 0,
+      financer: rawSale.financer || "",
+    },
+    CategoryId: rawSale.categoryId || null,
+    createdAt: rawSale.createdAt?.toISOString() || new Date().toISOString(),
+    batchNumber:
+      rawSale.mobiles?.batchNumber || rawSale.accessories?.batchNumber || "N/A",
+    category: rawSale.categories?.itemType?.toLowerCase() || "Uncategorized",
+    sellername: rawSale.actors?.name || "Unknown Seller",
+    shopname: rawSale.shops?.shopName || "Unknown Shop",
+  };
+
+  // Add mobile-specific fields if available
+  if (rawSale.mobiles) {
+    base.productmodel = rawSale.mobiles.phoneType || base.productmodel;
+    base.category = "mobiles";
+  }
+
+  // Add accessory-specific fields if available
+  if (rawSale.accessories) {
+    base.category = "accessories";
+  }
+
+  return base;
 };
 
-const transformgeneralSale = (sale) => {
-  //console.log("sales#$##$", sale);
-  const financeStatus = sale.financeDetails.financeStatus;
-  const isFinance = financeStatus !== "N/A";
-  return {
-    soldprice: Number(sale._sum.soldPrice),
-    commission: sale._sum.commission,
-    totalprofit: sale._sum.profit,
-    totaltransaction: sale._count._all,
-    productDetails: normalizedProduct(sale.productDetails),
-    categoryDetails: normalizedCategoryDetails(sale.categoryDetails),
-    shopDetails: normalizedShopDetails(sale.shopDetails),
-    sellerDetails: {
-      name: sale.sellerDetails?.name,
-      id: sale.sellerDetails?.id,
-    },
-    saleType: isFinance ? "finance" : "direct",
-    financeDetails: sale.financeDetails,
-    createdAt: sale.createdAt,
-    financeStatus: sale.financeStatus,
-  };
-};
-const normalizedProduct = (details) => {
-  return {
-    productID: details?.id,
-    batchNumber: details?.batchNumber,
-    productCost: details?.productCost,
-    productType: details?.itemType || details?.productType || "mobiles",
-  };
-};
-const normalizedCategoryDetails = (details) => {
-  return {
-    categoryId: details?.id,
-    category: details?.itemType || "accessory",
-    itemName: details?.itemName,
-    itemModel: details?.itemModel,
-    brand: details?.brand,
-  };
-};
-const normalizedShopDetails = (details) => {
-  return details
-    ? {
-        id: details.id,
-        name: details.shopName,
-        address: details.address,
-      }
-    : null;
-};
-const normalizedSellerDetails = (details) => {
-  return details
-    ? {
-        id: details.id,
-        name: details.sellerName,
-      }
-    : null;
-};
-
-export { transformSales, transformgeneralSale };
+export { transformSales };

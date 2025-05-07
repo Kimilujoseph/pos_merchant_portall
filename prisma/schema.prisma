@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-1.1.x", "linux-musl"]
 }
 
 datasource db {
@@ -98,6 +99,9 @@ model accessorysales {
   @@index([sellerId], map: "fk_accessorysales_2_idx")
   @@index([shopID], map: "fk_accessorysales_3_idx")
   @@index([categoryId], map: "fk_accessorysales_category")
+  @@index([createdAt], map: "idx_sales_created")
+  @@index([productID], map: "idx_sales_product")
+  @@index([sellerId], map: "idx_sales_seller")
 }
 
 model accessorytransferhistory {
@@ -295,6 +299,9 @@ model mobilesales {
   @@index([shopID], map: "fk_mobilesales_3_idx")
   @@index([finance], map: "fk_mobilesales_4_idx")
   @@index([categoryId], map: "fk_mobileSales_category")
+  @@index([createdAt], map: "idx_sales_created")
+  @@index([productID], map: "idx_sales_product")
+  @@index([sellerId], map: "idx_sales_seller")
 }
 
 model shops {

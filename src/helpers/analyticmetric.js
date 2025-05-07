@@ -1,3 +1,4 @@
+import { APIError, STATUS_CODE } from "../Utils/app-error.js";
 const analyseSalesMetric = (salesData) => {
   try {
     const productMetric = {};
@@ -13,19 +14,22 @@ const analyseSalesMetric = (salesData) => {
         categoryDetails,
         sellerDetails,
         financeStatus,
+        productName,
+        sellerName,
+        _id,
       } = sale;
       //did some twisting so we can have transcation counted in terms of category
-      const productId = categoryDetails.itemName;
-      const sellerId = sellerDetails.id;
-      const productName = categoryDetails.itemName;
-      const sellerName = sellerDetails.name;
+      const productId = productName;
+      const sellerId = _id.sellerId;
+      const itemName = productName;
+      const sellerNameFound = sellerName;
 
       if (financeStatus === "pending") return;
 
       // Update product metrics
       if (!productMetric[productId]) {
         productMetric[productId] = {
-          productName: productName,
+          productName: itemName,
           totalSales: 0,
           totaltransacted: 0,
           netprofit: 0,
@@ -38,7 +42,7 @@ const analyseSalesMetric = (salesData) => {
 
       if (!sellerMetric[sellerId]) {
         sellerMetric[sellerId] = {
-          sellerName: sellerName,
+          sellerName: sellerNameFound,
           totalSales: 0,
           netprofit: 0,
           totaltransacted: 0,

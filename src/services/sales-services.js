@@ -5,7 +5,7 @@ import { ShopmanagementRepository } from "../databases/repository/shop-repositor
 import { phoneinventoryrepository } from "../databases/repository/mobile-inventory-repository.js";
 import { CategoryManagementRepository } from "../databases/repository/category-contoller-repository.js";
 import { analyseSalesMetric } from "../helpers/analyticmetric.js";
-import { transformgeneralSale } from "../helpers/transformsales.js";
+import { transformSales } from "../helpers/transformsales.js";
 import { APIError, STATUS_CODE } from "../Utils/app-error.js";
 
 class salesmanagment {
@@ -21,72 +21,70 @@ class salesmanagment {
     try {
       const SALES_TABLE = ["mobilesales", "accessorysales"];
       const skip = (page - 1) * limit;
-      //console.log(page, limit);
-      const salesResult = await Promise.all(
-        SALES_TABLE.map(async (table) => {
-          return this.sales.findSales({
+
+      // 1. Fetch data with parallel execution
+      const salesResults = await Promise.all(
+        SALES_TABLE.map((table) =>
+          this.sales.findSales({
             salesTable: table,
             startDate,
             endDate,
-          });
-        })
+            page: 1, // Get all records for accurate analytics
+            limit: Number.MAX_SAFE_INTEGER,
+          })
+        )
       );
 
-      if (!salesResult.some((result) => result.generalReport?.length)) {
-        throw new APIError(
-          "sales not found",
-          STATUS_CODE.NOT_FOUND,
-          "sales not found"
-        );
+      // 2. Process results in streaming fashion
+      let financeSales = 0;
+      let totalProfit = 0;
+      const allSales = [];
+
+      // Process each table's results sequentially to avoid memory spikes
+      for (const result of salesResults) {
+        for (const sale of result.data) {
+          const transformed = transformSales(sale);
+          if (transformed.financeDetails.financeStatus === "pending") {
+            financeSales += transformed.financeDetails.financeAmount;
+          }
+          if (transformed.financeDetails.financeStatus !== "pending") {
+            totalProfit += transformed.netprofit;
+          }
+          allSales.push(transformed);
+        }
       }
 
-      //console.log("sales found", salesResult.generalReport);
+      // 3. Calculate totals from aggregated values
+      const totals = salesResults.reduce(
+        (acc, curr) => ({
+          totalSales: acc.totalSales + curr.totals.totalSales,
+          totalCommission: acc.totalCommission + curr.totals.totalCommission,
+          totalProfit,
+          financeSales,
+        }),
+        {
+          totalSales: 0,
+          totalCommission: 0,
+          totalProfit: 0,
+          financeSales: 0,
+        }
+      );
 
-      const [transformedSales, total] = salesResult
-        .flatMap((result) => result.generalReport)
-        .reduce(
-          ([sales, acc], sale) => {
-            // console.log("#$#$", sale);
-            const transformed = transformgeneralSale(sale);
-            //console.log("transformed sales", transformed);
-            sales.push(transformed);
-            acc.totalSales += Number(sale._sum.soldPrice);
-            acc.totalCommission += sale._sum.commission;
+      // 4. Paginate results
+      const paginatedSales = allSales.slice(skip, skip + limit);
 
-            if (transformed.financeStatus !== "pending") {
-              acc.totalProfit += transformed.totalprofit;
-            }
+      // 5. Process analytics in streaming fashion
+      const analytics = analyseSalesMetric(allSales);
 
-            if (transformed.financeDetails.financeStatus === "pending") {
-              acc.financeSales += transformed.financeDetails.financeAmount;
-            }
-
-            return [sales, acc];
-          },
-          [
-            [],
-            {
-              totalSales: 0,
-              totalCommission: 0,
-              totalProfit: 0,
-              financeSales: 0,
-            },
-          ]
-        );
-      const [analytics, paginatedSales] = await Promise.all([
-        analyseSalesMetric(transformedSales),
-        Promise.resolve(transformedSales.slice(skip, skip + limit)),
-      ]);
-      //console.log("@@", paginatedSales);
       return [
         {
           sales: {
             sales: paginatedSales,
-            totalSales: total.totalSales,
-            totalCommission: total.totalCommission,
-            totalProfit: total.totalProfit,
-            financeSales: total.financeSales,
-            totalPages: Math.ceil(transformedSales.length / limit),
+            totalSales: totals.totalSales,
+            totalCommission: totals.totalCommission,
+            totalProfit: totals.totalProfit,
+            financeSales: totals.financeSales,
+            totalPages: Math.ceil(allSales.length / limit),
             currentPage: page,
           },
           analytics: {
@@ -95,10 +93,10 @@ class salesmanagment {
         },
       ];
     } catch (err) {
+      console.log("#$%^&*(", err);
       this.handleServiceError(err);
     }
   }
-
   async getUserSales(salesDetails) {
     try {
       const { userId, startDate, endDate, page, limit } = salesDetails;

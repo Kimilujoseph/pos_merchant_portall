@@ -39,16 +39,14 @@ const getgeneralsales = async (req, res) => {
       );
     }
     const { sales, analytics } = generalSales[0];
-    //console.log("analytics of general sales ", analytics);
-    //console.log("@#", sales);
-    const transformedSales = transformSales(sales);
+
     // console.log("##$%#%$^", transformedSales);
     handleResponse({
       res,
       message: "General sales data retrieved successfully",
       data: {
         analytics: analytics || {},
-        sales: transformedSales || [],
+        sales: sales || [],
         salesPerMonth: sales.salesPerMonth || [],
         totalSales: sales.totalSales || 0,
         totalProfit: sales.totalProfit || 0,
