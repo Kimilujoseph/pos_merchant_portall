@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { APIError, STATUS_CODE } from "../../Utils/app-error.js";
 const prisma = new PrismaClient();
 class Sales {
@@ -262,31 +263,6 @@ class Sales {
     });
   }
 
-  async updatecategoryrevenue(category, amount) {
-    try {
-      const categoryRevenue = await categoryrevenue.findOne({ category });
-      if (categoryRevenue) {
-        categoryRevenue.totalCommission += amount;
-        await categoryRevenue.save();
-      } else {
-        await categoryrevenue.create({
-          category,
-          totalRevenue: 0,
-          totalCommission: amount,
-        });
-      }
-    } catch (err) {
-      console.log("error", err);
-      if (err instanceof APIError) {
-        throw err;
-      }
-      throw new APIError(
-        "database error",
-        STATUS_CODE.INTERNAL_ERROR,
-        "internal server error"
-      );
-    }
-  }
   transformUserSale(sale, tableName) {
     // Common properties
     const base = {
@@ -353,6 +329,63 @@ class Sales {
             stockStatus: sale.accessories?.stockStatus,
           },
         };
+  }
+  // sales.repository.js
+
+  async getSalesAnalytics(salesTable, startDate, endDate) {
+    try {
+      return await prisma.$queryRaw(
+        Prisma.sql`
+        SELECT 
+          p.itemName AS "productName",
+          CAST(SUM(s.soldprice) AS SIGNED) AS "totalSales",
+          CAST(SUM(s.profit) AS SIGNED) AS "netprofit",
+          CAST(COUNT(s._id) AS SIGNED) AS "totaltransacted"
+        FROM ${Prisma.raw(salesTable)} s
+        JOIN categories p ON s.categoryId = p._id
+        WHERE s.createdat BETWEEN ${startDate} AND ${endDate}
+          AND s.financestatus != 'pending'
+        GROUP BY p.itemName
+        ORDER BY "totalSales" DESC
+        LIMIT 10
+      `
+      );
+    } catch (err) {
+      console.log("#$#$sales", err);
+      throw new APIError(
+        "Database error",
+        STATUS_CODE.INTERNAL_ERROR,
+        "Failed to retrieve product analytics"
+      );
+    }
+  }
+
+  async getSellerAnalytics(salesTable, startDate, endDate) {
+    try {
+      return await prisma.$queryRaw(
+        Prisma.sql`
+        SELECT 
+          a.name AS "sellerName",
+          CAST(SUM(s.soldprice) AS SIGNED) AS "totalSales",
+          CAST(SUM(s.profit) AS SIGNED) AS "netprofit",
+          CAST(COUNT(s._id) AS SIGNED) AS "totaltransacted"
+        FROM ${Prisma.raw(salesTable)} s
+        JOIN actors a ON s.sellerid = a._id
+        WHERE s.createdat BETWEEN ${startDate} AND ${endDate}
+          AND s.financestatus != 'pending'
+        GROUP BY a.name
+        ORDER BY "totalSales" DESC
+        LIMIT 10
+      `
+      );
+    } catch (err) {
+      console.log("#$#$", err);
+      throw new APIError(
+        "Database error",
+        STATUS_CODE.INTERNAL_ERROR,
+        "Failed to retrieve seller analytics"
+      );
+    }
   }
 }
 

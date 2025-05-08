@@ -302,6 +302,7 @@ model mobilesales {
   @@index([createdAt], map: "idx_sales_created")
   @@index([productID], map: "idx_sales_product")
   @@index([sellerId], map: "idx_sales_seller")
+  @@index([financeStatus], map: "idx_sales_finance_status")
 }
 
 model shops {

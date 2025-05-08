@@ -22,25 +22,35 @@ class salesmanagment {
       const SALES_TABLE = ["mobilesales", "accessorysales"];
       const skip = (page - 1) * limit;
 
-      // 1. Fetch data with parallel execution
-      const salesResults = await Promise.all(
-        SALES_TABLE.map((table) =>
-          this.sales.findSales({
-            salesTable: table,
-            startDate,
-            endDate,
-            page: 1, // Get all records for accurate analytics
-            limit: Number.MAX_SAFE_INTEGER,
-          })
-        )
-      );
+      // Get all data in parallel
+      const [salesResults, analyticsResults] = await Promise.all([
+        // Existing sales data fetch
+        Promise.all(
+          SALES_TABLE.map((table) =>
+            this.sales.findSales({
+              salesTable: table,
+              startDate,
+              endDate,
+              page: 1,
+              limit: Number.MAX_SAFE_INTEGER,
+            })
+          )
+        ),
+        Promise.all(
+          SALES_TABLE.flatMap((table) => [
+            this.sales.getSalesAnalytics(table, startDate, endDate),
+            this.sales.getSellerAnalytics(table, startDate, endDate),
+          ])
+        ),
+      ]);
 
-      // 2. Process results in streaming fashion
+      //console.log("#$#$sales results", salesResults);
+
+      // Process sales data (existing logic)
       let financeSales = 0;
       let totalProfit = 0;
       const allSales = [];
 
-      // Process each table's results sequentially to avoid memory spikes
       for (const result of salesResults) {
         for (const sale of result.data) {
           const transformed = transformSales(sale);
@@ -54,7 +64,29 @@ class salesmanagment {
         }
       }
 
-      // 3. Calculate totals from aggregated values
+      // Process analytics results
+      const [
+        mobileProducts,
+        mobileSellers,
+        accessoryProducts,
+        accessorySellers,
+      ] = analyticsResults;
+
+      const mergedProductAnalytics = this.mergeAnalytics([
+        mobileProducts,
+        accessoryProducts,
+      ]);
+
+      console.log("#$#$#$", mergedProductAnalytics);
+
+      const mergedSellerAnalytics = this.mergeAnalytics([
+        mobileSellers,
+        accessorySellers,
+      ]);
+
+      console.log("#$#$#", mergedSellerAnalytics);
+
+      // Existing totals logic
       const totals = salesResults.reduce(
         (acc, curr) => ({
           totalSales: acc.totalSales + curr.totals.totalSales,
@@ -70,11 +102,9 @@ class salesmanagment {
         }
       );
 
-      // 4. Paginate results
+      // Pagination
       const paginatedSales = allSales.slice(skip, skip + limit);
-
-      // 5. Process analytics in streaming fashion
-      const analytics = analyseSalesMetric(allSales);
+      //console.log("#$#$", paginatedSales);
 
       return [
         {
@@ -88,14 +118,48 @@ class salesmanagment {
             currentPage: page,
           },
           analytics: {
-            analytics: analytics,
+            analytics: {
+              sellerAnalytics: mergedSellerAnalytics,
+              productAnalytics: mergedProductAnalytics,
+              totalProducts: mergedProductAnalytics.length,
+              totalSellers: mergedSellerAnalytics.length,
+            },
           },
         },
       ];
     } catch (err) {
-      console.log("#$%^&*(", err);
+      console.log("err", err);
       this.handleServiceError(err);
     }
+  }
+
+  // Helper method to merge analytics from different tables
+  mergeAnalytics(results) {
+    const merged = new Map();
+
+    for (const resultSet of results) {
+      for (const item of resultSet) {
+        const key = item.productName || item.sellerName;
+        const existing = merged.get(key);
+
+        if (existing) {
+          existing.totalSales += Number(item.totalSales);
+          existing.netprofit += Number(item.netprofit);
+          existing.totaltransacted += Number(item.totaltransacted);
+        } else {
+          merged.set(key, {
+            ...item,
+            totalSales: Number(item.totalSales),
+            netprofit: Number(item.netprofit),
+            totaltransacted: Number(item.totaltransacted),
+          });
+        }
+      }
+    }
+
+    return Array.from(merged.values())
+      .sort((a, b) => b.totalSales - a.totalSales)
+      .slice(0, 10);
   }
   async getUserSales(salesDetails) {
     try {

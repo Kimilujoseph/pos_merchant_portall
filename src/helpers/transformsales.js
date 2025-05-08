@@ -4,6 +4,7 @@ const transformSales = (rawSale) => {
     soldprice: Number(rawSale.soldPrice),
     netprofit: rawSale.profit,
     commission: rawSale.commission,
+    IMEI: rawSale.mobiles?.IMEI || 0,
     productcost: Number(
       rawSale.mobiles?.productCost || rawSale.accessories?.productCost || 0
     ),
