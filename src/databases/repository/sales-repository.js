@@ -5,7 +5,6 @@ const prisma = new PrismaClient();
 class Sales {
   async createnewMobilesales(salesDetails) {
     try {
-      console.log("#$#$", salesDetails);
       const successfullsale = await prisma.mobilesales.create({
         data: {
           ...salesDetails,
@@ -23,7 +22,6 @@ class Sales {
   }
   async createnewAccessoriesales(salesDetails) {
     try {
-      console.log("@#$#$", salesDetails);
       const successfullsale = await prisma.accessorysales.create({
         data: {
           ...salesDetails,
@@ -218,13 +216,18 @@ class Sales {
         _count: true,
       });
 
-      // const datareturned = results.map((sale) =>
-      //   this.transformUserSale(sale, salesTable)
-      // );
-      // console.log("#$#$", datareturned);
+      const transformSale = (sale) => ({
+        ...sale,
+        productDetails:
+          salesTable === "mobilesales" ? sale.mobiles : sale.accessories,
+        shopDetails: sale.shops,
+        sellerDetails: sale.actors,
+        categoryDetails: sale.categories,
+        financeDetails: this.mapFinanceDetails(sale),
+      });
 
       return {
-        data: results.map((sale) => this.transformUserSale(sale, salesTable)),
+        data: results.map(transformSale),
         totals: {
           totalSales: Number(totals._sum.soldPrice) || 0,
           totalProfit: totals._sum.profit || 0,
@@ -384,6 +387,60 @@ class Sales {
         "Database error",
         STATUS_CODE.INTERNAL_ERROR,
         "Failed to retrieve seller analytics"
+      );
+    }
+  }
+  async getUserSellerAnalytics(salesTable, userId, startDate, endDate) {
+    try {
+      return await prisma.$queryRaw(
+        Prisma.sql`
+        SELECT 
+          a.name AS "sellerName",
+          CAST(SUM(s.soldprice) AS SIGNED) AS "totalSales",
+          CAST(SUM(s.profit) AS SIGNED) AS "netprofit",
+          CAST(COUNT(s._id) AS SIGNED) AS "totaltransacted"
+        FROM ${Prisma.raw(salesTable)} s
+        JOIN actors a ON s.sellerid = a._id
+        WHERE s.sellerid = ${userId}
+          AND s.createdat BETWEEN ${startDate} AND ${endDate}
+          AND s.financestatus != 'pending'
+        GROUP BY a.name
+        ORDER BY "totalSales" DESC
+        LIMIT 10
+      `
+      );
+    } catch (err) {
+      throw new APIError(
+        "Database error",
+        STATUS_CODE.INTERNAL_ERROR,
+        "Analytics failed"
+      );
+    }
+  }
+  async getUserProductAnalytics(salesTable, userId, startDate, endDate) {
+    try {
+      return await prisma.$queryRaw(
+        Prisma.sql`
+        SELECT 
+          p.itemName AS "productName",
+          CAST(SUM(s.soldprice) AS SIGNED) AS "totalSales",
+          CAST(SUM(s.profit) AS SIGNED) AS "netprofit",
+          CAST(COUNT(s._id) AS SIGNED) AS "totaltransacted"
+        FROM ${Prisma.raw(salesTable)} s
+        JOIN categories p ON s.categoryId = p._id
+        WHERE s.sellerid = ${userId}
+          AND s.createdat BETWEEN ${startDate} AND ${endDate}
+          AND s.financestatus != 'pending'
+        GROUP BY p.itemName
+        ORDER BY "totalSales" DESC
+        LIMIT 10
+      `
+      );
+    } catch (err) {
+      throw new APIError(
+        "Database error",
+        STATUS_CODE.INTERNAL_ERROR,
+        "Analytics failed"
       );
     }
   }

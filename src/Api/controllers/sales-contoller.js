@@ -199,14 +199,14 @@ const getUserSales = async (req, res) => {
     // console.log("report", report);
     const { sales, analytics } = report;
     // console.log("#$usersales", analytics);
-    const transformedSales = transformSales(sales);
+    //const transformedSales = transformSales(sales);
     // console.log("##$%#%$^", transformedSales);
     handleResponse({
       res,
       message: "General sales data retrieved successfully",
       data: {
         analytics: analytics || {},
-        sales: transformedSales || [],
+        sales: sales || [],
         salesPerMonth: sales.salesPerMonth || [],
         totalSales: sales.totalSales || 0,
         totalProfit: sales.totalProfit || 0,

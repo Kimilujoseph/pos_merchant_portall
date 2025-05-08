@@ -76,17 +76,10 @@ class salesmanagment {
         mobileProducts,
         accessoryProducts,
       ]);
-
-      console.log("#$#$#$", mergedProductAnalytics);
-
       const mergedSellerAnalytics = this.mergeAnalytics([
         mobileSellers,
         accessorySellers,
       ]);
-
-      console.log("#$#$#", mergedSellerAnalytics);
-
-      // Existing totals logic
       const totals = salesResults.reduce(
         (acc, curr) => ({
           totalSales: acc.totalSales + curr.totals.totalSales,
@@ -104,7 +97,6 @@ class salesmanagment {
 
       // Pagination
       const paginatedSales = allSales.slice(skip, skip + limit);
-      //console.log("#$#$", paginatedSales);
 
       return [
         {
@@ -128,7 +120,7 @@ class salesmanagment {
         },
       ];
     } catch (err) {
-      console.log("err", err);
+      // console.log("err", err);
       this.handleServiceError(err);
     }
   }
@@ -156,7 +148,6 @@ class salesmanagment {
         }
       }
     }
-
     return Array.from(merged.values())
       .sort((a, b) => b.totalSales - a.totalSales)
       .slice(0, 10);
@@ -164,60 +155,119 @@ class salesmanagment {
   async getUserSales(salesDetails) {
     try {
       const { userId, startDate, endDate, page, limit } = salesDetails;
-      const salesTables = ["mobilesales", "accessorysales"];
-      const salesResults = await Promise.all(
-        salesTables.map((table) =>
-          this.sales.findUserSales({
-            salesTable: table,
-            userId,
-            startDate,
-            endDate,
-            page,
-            limit,
-          })
-        )
-      );
-      const combined = salesResults.reduce(
-        (acc, result) => ({
-          data: [...acc.data, ...result.data],
-          totals: {
-            totalSales:
-              Number(acc.totals.totalSales) + Number(result.totals.totalSales),
+      const SALES_TABLES = ["mobilesales", "accessorysales"];
+      const skip = (page - 1) * limit;
 
-            totalProfit: acc.totals.totalProfit + result.totals.totalProfit,
-            totalCommission:
-              acc.totals.totalCommission + result.totals.totalCommission,
-            totalItems: acc.totals.totalItems + result.totals.totalItems,
-          },
+      // Parallel fetch of sales data and analytics
+      const [salesResults, analyticsResults] = await Promise.all([
+        // Sales data fetch
+        Promise.all(
+          SALES_TABLES.map((table) =>
+            this.sales.findUserSales({
+              salesTable: table,
+              userId,
+              startDate,
+              endDate,
+              page,
+              limit,
+            })
+          )
+        ),
+        // Analytics fetch
+        Promise.all(
+          SALES_TABLES.flatMap((table) => [
+            this.sales.getUserProductAnalytics(
+              table,
+              userId,
+              startDate,
+              endDate
+            ),
+            this.sales.getUserSellerAnalytics(
+              table,
+              userId,
+              startDate,
+              endDate
+            ),
+          ])
+        ),
+      ]);
+
+      // Process sales data with streaming approach
+      let financeSales = 0;
+      let totalProfit = 0;
+      const allSales = [];
+
+      for (const result of salesResults) {
+        for (const sale of result.data) {
+          const transformed = transformSales(sale);
+          // console.log("transformed sales", transformed);
+
+          // Update financial metrics
+          if (transformed.financeDetails.financeStatus === "pending") {
+            financeSales += transformed.financeDetails.financeAmount;
+          } else {
+            totalProfit += transformed.netprofit;
+          }
+
+          allSales.push(transformed);
+        }
+      }
+
+      // Process analytics results
+      const [
+        mobileProducts,
+        mobileSellers,
+        accessoryProducts,
+        accessorySellers,
+      ] = analyticsResults;
+
+      const mergedProductAnalytics = this.mergeAnalytics([
+        mobileProducts,
+        accessoryProducts,
+      ]);
+
+      const mergedSellerAnalytics = this.mergeAnalytics([
+        mobileSellers,
+        accessorySellers,
+      ]);
+      const totals = salesResults.reduce(
+        (acc, curr) => ({
+          totalSales: acc.totalSales + Number(curr.totals.totalSales),
+          totalCommission:
+            acc.totalCommission + Number(curr.totals.totalCommission),
+          totalProfit,
+          financeSales,
+          totalItems: acc.totalItems + Number(curr.totals.totalItems),
         }),
         {
-          data: [],
-          totals: {
-            totalSales: 0,
-            totalProfit: 0,
-            totalCommission: 0,
-            totalItems: 0,
-          },
+          totalSales: 0,
+          totalCommission: 0,
+          totalProfit: 0,
+          financeSales: 0,
+          totalItems: 0,
         }
       );
 
-      //console.log("combineddata", combined.data);
-
       return {
         sales: {
-          sales: combined.data,
-          totalSales: combined.totals.totalSales,
-          totalProfit: combined.totals.totalProfit,
-          totalCommission: combined.totals.totalCommission,
-          totalPages: Math.ceil(combined.totals.totalItems / limit),
+          sales: allSales.slice(skip, skip + limit),
+          totalSales: totals.totalSales,
+          totalProfit: totals.totalProfit,
+          totalCommission: totals.totalCommission,
+          financeSales: totals.financeSales,
+          totalPages: Math.ceil(totals.totalItems / limit),
           currentPage: page,
         },
         analytics: {
-          analytics: analyseSalesMetric(combined.data),
+          analytics: {
+            sellerAnalytics: mergedSellerAnalytics,
+            productAnalytics: mergedProductAnalytics,
+            totalProducts: mergedProductAnalytics.length,
+            totalSellers: mergedSellerAnalytics.length,
+          },
         },
       };
     } catch (error) {
-      //console.error("Error in getUserSales:", error);
       this.handleServiceError(error);
     }
   }
@@ -245,7 +295,6 @@ class salesmanagment {
           sale.financeDetails.financeStatus !== "pending"
         );
       });
-      console.log("filterd", filteredSales);
       const paginatedSales = fullfilledSales.slice(skip, skip + limit);
       const transformSales = (sales) => {
         return sales.map((sale) => ({
@@ -308,7 +357,7 @@ class salesmanagment {
         },
       };
     } catch (err) {
-      console.error("Error generating category sales:", err);
+      // console.error("Error generating category sales:", err);
       if (err instanceof APIError) {
         throw err;
       }
@@ -331,7 +380,7 @@ class salesmanagment {
       });
 
       const allSales = generalSalesData[0].sales.sales;
-      console.log("allsales", allSales);
+      //console.log("allsales", allSales);
       const fullfilledSales = allSales.filter(
         (sale) => sale.shopDetails.id === shopId
       );
@@ -341,7 +390,7 @@ class salesmanagment {
           sale.financeDetails.financeStatus !== "pending"
         );
       });
-      console.log("filterd", filteredSales);
+      //console.log("filterd", filteredSales);
       const paginatedSales = fullfilledSales.slice(skip, skip + limit);
       const transformSales = (sales) => {
         return sales.map((sale) => ({
