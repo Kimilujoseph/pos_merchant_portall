@@ -119,6 +119,8 @@ class MobileSalesService {
         seller,
         CategoryId,
         paymentmethod,
+        customerId,
+        paymentId,
         ...customerDetails
       } = saleDetails;
       // console.log("343@", customerDetails);
@@ -149,9 +151,8 @@ class MobileSalesService {
           categoryId,
           paymentmethod,
           profit,
-          customerName: customerDetails.customerName,
-          customerEmail: customerDetails.customerEmails,
-          customerPhoneNumber: customerDetails.customerphonenumber,
+          customerId,
+          paymentId,
         },
         finance
       );

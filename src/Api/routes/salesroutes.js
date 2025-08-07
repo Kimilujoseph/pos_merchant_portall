@@ -1,17 +1,17 @@
 import express from "express";
-import { verifyUser } from "../../middleware/verification.js";
-import {
-  getCategorySales,
-  getShopSales,
-  getgeneralsales,
-  getUserSales,
-} from "../controllers/sales-contoller.js";
-import { makesales } from "../controllers/make-sales-managment.contoller.js";
+import verifyUser from "../../middleware/verification.js";
+import { handleGetSales, handleBulkSale } from "../controllers/sales-contoller.js";
+import { parseSalesQuery } from "../../middleware/query-parser.js";
 
 const route = express.Router();
-route.get("/report/category/:categoryId", verifyUser, getCategorySales);
-route.get("/report/:shopId", verifyUser, getShopSales);
-route.get("/all", verifyUser, getgeneralsales);
-route.get("/user/:userId", verifyUser, getUserSales);
-route.post("/items/sale", verifyUser, makesales);
+
+// Consolidated Sales Report Routes
+route.get("/report/category/:categoryId", verifyUser, parseSalesQuery, handleGetSales);
+route.get("/report/shop/:shopId", verifyUser, parseSalesQuery, handleGetSales);
+route.get("/report/user/:userId", verifyUser, parseSalesQuery, handleGetSales);
+route.get("/report", verifyUser, parseSalesQuery, handleGetSales);
+
+// Make a sale route
+route.post("/items/sale", verifyUser, handleBulkSale);
+
 export default route;

@@ -1,5 +1,4 @@
 import path from "path";
-import { fileURLToPath } from "url";
 import { InventorymanagementRepository } from "../databases/repository/invetory-controller-repository.js";
 import { ShopmanagementRepository } from "../databases/repository/shop-repository.js";
 import { CategoryManagementRepository } from "../databases/repository/category-contoller-repository.js";
@@ -7,8 +6,7 @@ import { Sales } from "../databases/repository/sales-repository.js";
 import { APIError, STATUS_CODE } from "../Utils/app-error.js";
 import { validateItemsInputs } from "../helpers/updateValidationHelper.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __dirname = path.resolve(path.dirname(''));
 
 class InvetorymanagementService {
   constructor() {

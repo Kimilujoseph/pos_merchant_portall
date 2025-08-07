@@ -4,18 +4,14 @@ import { APIError, STATUS_CODE } from "../../Utils/app-error.js";
 class phoneinventoryrepository {
   async createPhonewithFinaceDetails(payload) {
     try {
-      const { phoneDetails, financeDetails, shopId, user } = payload;
-      //console.log("phoneDetails", phoneDetails);
-      const newMobileProduct = await this.createphoneStock({ ...phoneDetails });
-      const createPhoneMetaData = await Promise.all([
-        this.createFinanceDetails(newMobileProduct.id, financeDetails),
-        this.createHistory({
+      const { phoneDetails, shopId, user, supplierId, paymentStatus } = payload;
+      const newMobileProduct = await this.createphoneStock({ ...phoneDetails, supplierId, paymentStatus });
+      const createPhoneMetaData = await this.createHistory({
           user,
           shopId,
           productId: newMobileProduct.id,
           type: "new stock",
-        }),
-      ]);
+        });
     } catch (err) {
       console.log("err", err);
       if (err instanceof APIError) {
@@ -42,6 +38,8 @@ class phoneinventoryrepository {
     batchNumber,
     productType,
     storage,
+    supplierId,
+    paymentStatus,
   }) {
     try {
       const category = parseInt(CategoryId, 10);
@@ -60,6 +58,8 @@ class phoneinventoryrepository {
           supplierName: supplierName,
           productCost: productcost,
           createdAt: new Date(),
+          supplierId: supplierId,
+          paymentStatus: paymentStatus,
         },
       });
 
@@ -82,28 +82,7 @@ class phoneinventoryrepository {
     }
   }
 
-  async createFinanceDetails(productId, financeDetails) {
-    try {
-      const updatedFinaceDetails = await prisma.mobilefinance.create({
-        data: {
-          financer: financeDetails.financer,
-          financeAmount: financeDetails.financeAmount,
-          financeStatus: financeDetails.financeStatus,
-          productID: productId,
-        },
-      });
-      return updatedFinaceDetails;
-    } catch (err) {
-      if (err instanceof APIError) {
-        throw err;
-      }
-      throw new APIError(
-        "API Error",
-        STATUS_CODE.INTERNAL_ERROR,
-        err.message || "Unable to create new goods"
-      );
-    }
-  }
+  
 
   async createHistory({ productId, user, type, shopId }) {
     try {
@@ -545,10 +524,10 @@ class phoneinventoryrepository {
           status: transferData.status,
           type: transferData.type,
           shops_mobiletransferHistory_fromshopToshops: {
-            connect: { id: transferData.toShop },
+            connect: { id: transferData.fromShop },
           },
           shops_mobiletransferHistory_toshopToshops: {
-            connect: { id: transferData.fromShop },
+            connect: { id: transferData.toShop },
           },
           actors_mobiletransferHistory_transferdByToactors: {
             connect: { id: transferData.transferdBy },
@@ -558,6 +537,27 @@ class phoneinventoryrepository {
           },
         },
       });
+
+      console.log("Creating mobileItems with data:", {
+        mobileID: id,
+        shopID: transferData.toShop,
+        status: 'pending',
+        quantity: transferData.quantity,
+        transferId: createdTransferHistory.id,
+      });
+
+      // Create a corresponding mobileItems entry with status 'pending'
+      const createdMobileItem = await prisma.mobileItems.create({
+        data: {
+          mobileID: id,
+          shopID: transferData.toShop,
+          status: 'pending',
+          quantity: transferData.quantity,
+          transferId: createdTransferHistory.id, // Link to the transfer history
+        },
+      });
+      console.log("mobileItems created:", createdMobileItem);
+
       return createdTransferHistory;
     } catch (err) {
       console.log("err", err);

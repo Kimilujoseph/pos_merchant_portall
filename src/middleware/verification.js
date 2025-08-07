@@ -22,4 +22,4 @@ const verifyUser = async (req, res, next) => {
     }
 };
 
-export { verifyUser };
+export default verifyUser;

@@ -8,6 +8,59 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Customer {
+  id             Int              @id @default(autoincrement())
+  name           String
+  email          String?          @unique
+  phoneNumber    String           @unique
+  createdAt      DateTime         @default(now())
+  sales          mobilesales[]
+  accessorysales accessorysales[]
+  returns        Return[]
+}
+
+model Payment {
+  id            Int             @id @default(autoincrement())
+  saleId        Int
+  amount        Decimal         @db.Decimal(10, 2)
+  paymentMethod String
+  status        String          @default("completed") // e.g., completed, pending, failed
+  transactionId String? // From payment processor
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  sale          mobilesales?    @relation("mobile_payments", fields: [saleId], references: [id], map: "mobile_payments_saleId_fkey")
+  accessorySale accessorysales? @relation("accessory_payments", fields: [saleId], references: [id], map: "accessory_payments_saleId_fkey")
+}
+
+model Return {
+  id            Int             @id @default(autoincrement())
+  saleId        Int
+  customerId    Int
+  reason        String
+  returnedAt    DateTime        @default(now())
+  processedBy   Int
+  processor     actors          @relation(fields: [processedBy], references: [id])
+  customer      Customer        @relation(fields: [customerId], references: [id])
+  sale          mobilesales?    @relation("mobile_returns", fields: [saleId], references: [id], map: "mobile_returns_saleId_fkey")
+  accessorySale accessorysales? @relation("accessory_returns", fields: [saleId], references: [id], map: "accessory_returns_saleId_fkey")
+
+  @@index([processedBy])
+  @@index([customerId])
+  @@index([saleId])
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  userId    Int? // Can be null if it's a system-wide notification
+  message   String
+  type      String // e.g., 'low_stock', 'large_sale', 'transfer_confirmed'
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      actors?  @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
 model accessories {
   id                       Int                        @id @unique(map: "_id_UNIQUE") @default(autoincrement()) @map("_id")
   batchNumber              String                     @unique(map: "itemName_UNIQUE") @db.VarChar(255)
@@ -22,13 +75,15 @@ model accessories {
   productCost              Int?
   commission               Int?
   discount                 Int?
-  supplierName             String?                    @db.VarChar(255)
   updatedAt                DateTime?                  @default(now()) @db.DateTime(0)
   categories               categories                 @relation(fields: [CategoryId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_accessories_1")
   accessoryHistory         accessoryHistory[]
   accessoryItems           accessoryItems[]
   accessorysales           accessorysales[]
   accessorytransferhistory accessorytransferhistory[]
+  supplierId               Int?
+  supplier                 Supplier?                  @relation(fields: [supplierId], references: [id])
+  paymentStatus            String                     @default("PAID")
 
   @@index([CategoryId], map: "fk_accessories_1_idx")
 }
@@ -81,19 +136,23 @@ model accessorysales {
   customerEmail       String?                           @default("doe@gmail.com") @db.VarChar(45)
   customerPhoneNumber String?                           @default("07000000") @db.VarChar(45)
   paymentmethod       accessorysales_paymentmethod?
-  finance             Int
   createdAt           DateTime?                         @default(now()) @db.DateTime(0)
   commisssionStatus   accessorysales_commisssionStatus?
   quantity            Int?                              @default(0)
   commission          Int?                              @default(0)
   categoryId          Int?
-  financer            String?                           @default("captech") @db.VarChar(255)
   financeStatus       String?                           @default("paid") @db.VarChar(255)
   financeAmount       Int?                              @default(0)
   accessories         accessories                       @relation(fields: [productID], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_accessorysales_1")
   actors              actors                            @relation(fields: [sellerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_accessorysales_2")
   shops               shops                             @relation(fields: [shopID], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_accessorysales_3")
   categories          categories?                       @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_accessorysales_category")
+  financerId          Int?
+  financer            Financer?                         @relation(fields: [financerId], references: [id])
+  customerId          Int?
+  customer            Customer?                         @relation(fields: [customerId], references: [id])
+  payments            Payment[]                         @relation("accessory_payments")
+  returns             Return[]                          @relation("accessory_returns")
 
   @@index([productID], map: "fk_accessorysales_1_idx")
   @@index([sellerId], map: "fk_accessorysales_2_idx")
@@ -102,6 +161,8 @@ model accessorysales {
   @@index([createdAt], map: "idx_sales_created")
   @@index([productID], map: "idx_sales_product")
   @@index([sellerId], map: "idx_sales_seller")
+  @@index([customerId])
+  @@index([financerId])
 }
 
 model accessorytransferhistory {
@@ -139,6 +200,7 @@ model actors {
   workingstatus                                                         String?                    @default("inactive") @db.VarChar(45)
   phone                                                                 String                     @unique @db.VarChar(45)
   role                                                                  String?                    @default("seller") @db.VarChar(45)
+  baseSalary                                                            Decimal?                   @db.Decimal(10, 2)
   Idimagebackward                                                       String                     @default("https://www.linkedin.com/default_profile_picture.png") @db.VarChar(255)
   Idimagefront                                                          String                     @default("https://www.linkedin.com/default_profile_picture.png") @db.VarChar(255)
   profileimage                                                          String?                    @default("https://www.linkedin.com/default_profile_picture.png") @db.VarChar(255)
@@ -155,6 +217,13 @@ model actors {
   mobilesales                                                           mobilesales[]
   mobiletransferHistory_mobiletransferHistory_confirmedByToactors       mobiletransferHistory[]    @relation("mobiletransferHistory_confirmedByToactors")
   mobiletransferHistory_mobiletransferHistory_transferdByToactors       mobiletransferHistory[]    @relation("mobiletransferHistory_transferdByToactors")
+  returns                                                               Return[]
+  notifications                                                         Notification[]
+  expenses                                                              Expense[]
+  commissionPayments                                                    CommissionPayment[]        @relation("seller_commissions")
+  processedCommissionPayments                                           CommissionPayment[]        @relation("processed_commissions")
+  salaryPayments                                                        SalaryPayment[]            @relation("employee_salaries")
+  processedSalaryPayments                                               SalaryPayment[]            @relation("processed_salaries")
 }
 
 model assignment {
@@ -227,16 +296,18 @@ model mobileItems {
   @@index([confirmedBy], map: "fk_mobileItems_confirmedBy")
 }
 
-model mobilefinance {
-  id            Int           @id @unique(map: "_id_UNIQUE") @default(autoincrement()) @map("_id")
-  financer      String        @default("captech") @db.VarChar(45)
-  financeAmount Decimal       @default(0.00) @db.Decimal(10, 2)
-  financeStatus String?       @default("paid") @db.VarChar(45)
-  productID     Int
-  mobiles       mobiles       @relation(fields: [productID], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_financer_1")
-  mobilesales   mobilesales[]
+model Financer {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  contactName String?
+  phone       String?
+  email       String?  @unique
+  address     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  @@index([productID], map: "fk_financer_1_idx")
+  mobilesales    mobilesales[]
+  accessorysales accessorysales[]
 }
 
 model mobiles {
@@ -256,13 +327,14 @@ model mobiles {
   phoneType             String?                 @db.VarChar(45)
   updatedAt             DateTime?               @default(now()) @db.DateTime(0)
   itemType              String?                 @default("mobiles") @db.VarChar(45)
-  supplierName          String?                 @db.VarChar(255)
   mobileHistory         mobileHistory[]
   mobileItems           mobileItems[]
-  mobilefinance         mobilefinance[]
   categories            categories              @relation(fields: [CategoryId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_mobiles_1")
   mobilesales           mobilesales[]
   mobiletransferHistory mobiletransferHistory[]
+  supplierId            Int?
+  supplier              Supplier?               @relation(fields: [supplierId], references: [id])
+  paymentStatus         String                  @default("PAID")
 
   @@index([CategoryId], map: "fk_mobiles_1_idx")
 }
@@ -276,12 +348,10 @@ model mobilesales {
   customerEmail       String?                        @default("doe@gmail.com") @db.VarChar(45)
   customerPhoneNumber String?                        @default("07000000") @db.VarChar(45)
   paymentmethod       mobilesales_paymentmethod?
-  finance             Int
   createdAt           DateTime?                      @default(now()) @db.DateTime(0)
   commisssionStatus   mobilesales_commisssionStatus?
   quantity            Int?                           @default(0)
   salesType           String?                        @default("direct") @db.VarChar(255)
-  financer            String?                        @default("captech") @db.VarChar(255)
   financeStatus       String?                        @default("captech") @db.VarChar(255)
   financeAmount       Int?                           @default(0)
   categoryId          Int?
@@ -292,17 +362,23 @@ model mobilesales {
   mobiles             mobiles                        @relation(fields: [productID], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_mobilesales_1")
   actors              actors                         @relation(fields: [sellerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_mobilesales_2")
   shops               shops                          @relation(fields: [shopID], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_mobilesales_3")
-  mobilefinance       mobilefinance                  @relation(fields: [finance], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_mobilesales_4")
+  financerId          Int?
+  financer            Financer?                      @relation(fields: [financerId], references: [id])
+  customerId          Int?
+  customer            Customer?                      @relation(fields: [customerId], references: [id])
+  payments            Payment[]                      @relation("mobile_payments")
+  returns             Return[]                       @relation("mobile_returns")
 
   @@index([productID], map: "fk_mobilesales_1_idx")
   @@index([sellerId], map: "fk_mobilesales_2_idx")
   @@index([shopID], map: "fk_mobilesales_3_idx")
-  @@index([finance], map: "fk_mobilesales_4_idx")
+  @@index([financerId])
   @@index([categoryId], map: "fk_mobileSales_category")
   @@index([createdAt], map: "idx_sales_created")
   @@index([productID], map: "idx_sales_product")
   @@index([sellerId], map: "idx_sales_seller")
   @@index([financeStatus], map: "idx_sales_finance_status")
+  @@index([customerId])
 }
 
 model shops {
@@ -320,13 +396,21 @@ model shops {
   mobilesales                                                       mobilesales[]
   mobiletransferHistory_mobiletransferHistory_fromshopToshops       mobiletransferHistory[]    @relation("mobiletransferHistory_fromshopToshops")
   mobiletransferHistory_mobiletransferHistory_toshopToshops         mobiletransferHistory[]    @relation("mobiletransferHistory_toshopToshops")
+  expenses                                                          Expense[]
 }
 
-model supplier {
-  id              Int     @id @unique(map: "_id_UNIQUE") @default(autoincrement()) @map("_id")
-  supplierAddress String  @db.VarChar(45)
-  supplierName    String  @db.VarChar(45)
-  contact         String? @db.VarChar(45)
+model Supplier {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  contactName String?
+  phone       String?
+  email       String?  @unique
+  address     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  accessories accessories[]
+  mobiles     mobiles[]
 }
 
 model sessions {
@@ -401,4 +485,57 @@ enum mobiletransferHistory_type {
   distribution
   transfer
   return
+}
+
+enum ExpenseCategory {
+  RENT
+  UTILITIES
+  SUPPLIES
+  MARKETING
+  OTHER
+}
+
+model Expense {
+  id          Int             @id @default(autoincrement())
+  description String
+  amount      Decimal         @db.Decimal(10, 2)
+  category    ExpenseCategory
+  expenseDate DateTime
+  shopId      Int?
+  shop        shops?          @relation(fields: [shopId], references: [id])
+  processedById Int
+  processedBy actors          @relation(fields: [processedById], references: [id])
+
+  @@index([shopId])
+  @@index([processedById])
+}
+
+model CommissionPayment {
+  id              Int      @id @default(autoincrement())
+  sellerId        Int
+  seller          actors   @relation("seller_commissions", fields: [sellerId], references: [id])
+  amountPaid      Decimal  @db.Decimal(10, 2)
+  paymentDate     DateTime
+  periodStartDate DateTime
+  periodEndDate   DateTime
+  processedById   Int
+  processedBy     actors   @relation("processed_commissions", fields: [processedById], references: [id])
+
+  @@index([sellerId])
+  @@index([processedById])
+}
+
+model SalaryPayment {
+  id             Int      @id @default(autoincrement())
+  employeeId     Int
+  employee       actors   @relation("employee_salaries", fields: [employeeId], references: [id])
+  amount         Decimal  @db.Decimal(10, 2)
+  paymentDate    DateTime
+  payPeriodMonth Int
+  payPeriodYear  Int
+  processedById  Int
+  processedBy    actors   @relation("processed_salaries", fields: [processedById], references: [id])
+
+  @@index([employeeId])
+  @@index([processedById])
 }

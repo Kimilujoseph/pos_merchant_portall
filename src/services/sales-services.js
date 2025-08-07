@@ -7,6 +7,7 @@ import { CategoryManagementRepository } from "../databases/repository/category-c
 import { analyseSalesMetric } from "../helpers/analyticmetric.js";
 import { transformSales } from "../helpers/transformsales.js";
 import { APIError, STATUS_CODE } from "../Utils/app-error.js";
+import CustomerRepository from "../databases/repository/customer-repository.js";
 
 class salesmanagment {
   constructor() {
@@ -16,7 +17,66 @@ class salesmanagment {
     this.sales = new Sales();
     this.mobile = new phoneinventoryrepository();
     this.category = new CategoryManagementRepository();
+    this.customer = CustomerRepository;
   }
+
+  async createBulkSale(salePayload, user, financerId) {
+    const { shopName, customerdetails, bulksales } = salePayload;
+    const { id: sellerId } = user;
+
+    const shop = await this.shop.findShop({ shopName });
+    if (!shop) {
+      throw new APIError("Shop not found", STATUS_CODE.NOT_FOUND, "The specified shop does not exist.");
+    }
+
+    let customer = await this.customer.findCustomerByPhone(customerdetails.phoneNumber);
+    if (!customer) {
+      customer = await this.customer.createCustomer(customerdetails);
+    }
+
+    const successfulSales = [];
+    let totalAmount = 0;
+    for (const sale of bulksales) {
+      const { itemType, items } = sale;
+      for (const item of items) {
+        const { productId, soldprice, soldUnits } = item;
+        totalAmount += soldprice * soldUnits;
+        const saleData = {
+          productID: productId,
+          shopID: shop.id,
+          sellerId,
+          soldPrice: soldprice,
+          quantity: soldUnits,
+          customerId: customer.id,
+          // ... other sale details
+        };
+
+        let createdSale;
+        if (itemType === 'mobiles') {
+          createdSale = await this.sales.createnewMobilesales(saleData);
+        } else if (itemType === 'accessories') {
+          createdSale = await this.sales.createnewAccessoriesales(saleData);
+        }
+
+        if (createdSale) {
+          successfulSales.push({ status: 'fulfilled', value: createdSale });
+        } else {
+          successfulSales.push({ status: 'rejected', reason: 'Sale creation failed' });
+        }
+      }
+    }
+
+    const payment = await this.sales.createPayment({
+      amount: totalAmount,
+      paymentMethod: 'mpesa', // Assuming a default or derived payment method
+      status: 'completed',
+      saleId: successfulSales[0].value.id,
+      financerId: financerId, // Pass financerId here
+    });
+
+    return { successfulSales, customer, payment };
+  }
+
   async generategeneralsales({ startDate, endDate, page, limit }) {
     try {
       const SALES_TABLE = ["mobilesales", "accessorysales"];

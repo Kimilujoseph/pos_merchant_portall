@@ -1,5 +1,5 @@
 import { type } from "os";
-import { APIError, STATUS_CODE } from "../Utils/app-error.js  ";
+import { APIError, STATUS_CODE } from "../Utils/app-error.js";
 const validateUpdateInputs = (updates) => {
   //lets update the  update objetc first
   if (

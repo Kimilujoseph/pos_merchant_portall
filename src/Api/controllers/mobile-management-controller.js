@@ -8,6 +8,7 @@ const inventoryManagementSystem = new MobilemanagementService();
 const addNewPhoneProduct = async (req, res, next) => {
   try {
     const user = req.user;
+    console.log("User in addNewPhoneProduct:", user);
     if (!["superuser", "manager"].includes(user.role)) {
       throw new APIError(
         "Not authorised",
@@ -15,13 +16,15 @@ const addNewPhoneProduct = async (req, res, next) => {
         "not authorised to add new phone"
       );
     }
-    const { phoneDetails, financeDetails } = req.body;
+    const { phoneDetails } = req.body;
+    const { supplierId, paymentStatus } = phoneDetails;
     let availableStock = 1;
     const newPhoneStock = await inventoryManagementSystem.createnewPhoneproduct(
       {
         phoneDetails,
-        financeDetails,
         user: user.id,
+        supplierId,
+        paymentStatus,
       }
     );
     res.status(201).json({
@@ -175,11 +178,12 @@ const confirmphonearrival = async (req, res, next) => {
     let userId;
     const { shopname, productId, transferId, quantity } = req.body;
     const user = req.user;
-    console.log(req.body);
-    console.log("user", user);
+    console.log("confirmphonearrival - req.body:", req.body);
+    console.log("confirmphonearrival - user:", user);
     const stockId = parseInt(productId, 10);
     const transferID = parseInt(transferId, 10);
     userId = parseInt(user.id, 10);
+    console.log("confirmphonearrival - parsed values:", { userId, shopname, stockId, quantity, transferID });
     const updateproductTransfer =
       await inventoryManagementSystem.confirmDistribution({
         userId,
@@ -188,6 +192,7 @@ const confirmphonearrival = async (req, res, next) => {
         quantity,
         transferID,
       });
+    console.log("confirmphonearrival - updateproductTransfer result:", updateproductTransfer);
 
     return res.status(200).json({
       messsage: "successfully confirmed arrival",

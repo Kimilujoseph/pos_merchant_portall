@@ -1,5 +1,5 @@
 import express from "express";
-import { verifyUser } from "../../middleware/verification.js";
+import verifyUser from "../../middleware/verification.js";
 import {
   addNewPhoneProduct,
   findAllMobileAccessoryProduct,

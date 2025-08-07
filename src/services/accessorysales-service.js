@@ -1,182 +1,329 @@
-import { Sales } from "../databases/repository/sales-repository.js";
-import { InventorymanagementRepository } from "../databases/repository/invetory-controller-repository.js";
-import { usermanagemenRepository } from "../databases/repository/usermanagement-controller-repository.js";
+import { AccessoryInventoryRepository } from "../databases/repository/accessory-inventory-repository.js";
 import { ShopmanagementRepository } from "../databases/repository/shop-repository.js";
 import { CategoryManagementRepository } from "../databases/repository/category-contoller-repository.js";
 import { APIError, STATUS_CODE } from "../Utils/app-error.js";
+import { validateUpdateInputs } from "../helpers/updateValidationHelper.js";
 
-class AccessorySalesService {
-  constructor(repositories = {}) {
-    this.repositories = {
-      user: repositories.user || new usermanagemenRepository(),
-      inventory: repositories.inventory || new InventorymanagementRepository(),
-      shop: repositories.shop || new ShopmanagementRepository(),
-      sales: repositories.sales || new Sales(),
-      category: repositories.category || new CategoryManagementRepository(),
-    };
+class AccessoryManagementService {
+  constructor() {
+    this.accessory = new AccessoryInventoryRepository();
+    this.shop = new ShopmanagementRepository();
+    this.category = new CategoryManagementRepository();
   }
 
-  async validateSeller(sellerId, shopName) {
-    const [user, assignedShops] = await Promise.all([
-      this.repositories.user.findUserById({ id: sellerId }),
-      this.repositories.user.findAssignedShop(sellerId),
-    ]);
-
-    if (!user) {
-      throw new APIError("Seller not found", STATUS_CODE.NOT_FOUND);
-    }
-
-    if (user.workingstatus !== "active") {
-      throw new APIError(
-        `Unauthorized - Account ${user.workingstatus}`,
-        STATUS_CODE.UNAUTHORIZED,
-        `Unauthorized - Account ${user.workingstatus}`
-      );
-    }
-
-    const activeAssignment = assignedShops.find(
-      (assignment) =>
-        assignment.status === "assigned" &&
-        assignment.shops.shopName === shopName
-    );
-
-    if (!activeAssignment) {
-      throw new APIError(
-        "Unauthorized to make sales in this shop",
-        STATUS_CODE.UNAUTHORIZED,
-        "Unauthorized to make sales in this shop"
-      );
-    }
-
-    return user;
-  }
-
-  async validateProduct(stockId, shopName, transferId, quantity) {
-    const [product, shop] = await Promise.all([
-      this.repositories.inventory.findProductById(stockId),
-      this.repositories.shop.findShop({ name: shopName }),
-    ]);
-
-    if (!product) {
-      throw new APIError(
-        "Product not found",
-        STATUS_CODE.NOT_FOUND,
-        "product not found"
-      );
-    }
-
-    if (!shop) {
-      throw new APIError(
-        "Shop not found",
-        STATUS_CODE.NOT_FOUND,
-        "shop not found"
-      );
-    }
-
-    const stockItem = shop.accessoryItems.find(
-      (item) =>
-        item.accessoryID === stockId &&
-        item.transferId === transferId &&
-        item.quantity >= quantity &&
-        item.status === "confirmed"
-    );
-
-    if (!stockItem) {
-      throw new APIError(
-        `Product not available in ${shopName}`,
-        STATUS_CODE.BAD_REQUEST,
-        `Product not available in ${shopName}`
-      );
-    }
-
-    return { product, shop };
-  }
-
-  async updateInventory(shopId, transferId, soldUnits) {
-    await this.repositories.shop.updateSalesOfAccessory(
-      shopId,
-      transferId,
-      soldUnits
-    );
-  }
-
-  async recordAccessorySaleTransaction(saleData) {
-    return this.repositories.sales.createnewAccessoriesales({
-      ...saleData,
-    });
-  }
-
-  async processAccessorySale(saleDetails) {
+  async createNewAccessoryProduct(newAccessoryProduct) {
     try {
-      const {
-        productId,
-        shopname,
-        soldprice,
-        seller,
-        transferId,
-        soldUnits,
-        CategoryId,
-        ...otherDetails
-      } = saleDetails;
-
-      const numericFields = [
-        productId,
-        seller,
-        soldprice,
-        CategoryId,
-        transferId,
-      ];
-      if (numericFields.some((field) => isNaN(parseInt(field, 10)))) {
+      const { accessoryDetails, financeDetails, user, supplierId } = newAccessoryProduct;
+      const { CategoryId } = accessoryDetails;
+      const category = parseInt(CategoryId, 10);
+      const categoryExist = await this.category.getCategoryById(category);
+      if (!categoryExist) {
         throw new APIError(
-          "Invalid numeric input",
+          "Invalid category",
           STATUS_CODE.BAD_REQUEST,
-          "invalid numeric values"
+          "Invalid category"
+        );
+      }
+      const shopFound = await this.shop.findShop({ name: "Kahawa 2323" }); // Assuming a default shop
+      if (!shopFound) {
+        throw new APIError(
+          "Shop not found",
+          STATUS_CODE.NOT_FOUND,
+          "Shop not found"
+        );
+      }
+      const shopId = shopFound.id;
+      const payload = {
+        accessoryDetails,
+        financeDetails,
+        shopId,
+        user,
+        supplierId,
+      };
+      const newProduct = await this.accessory.createAccessoryWithFinanceDetails(
+        payload
+      );
+      return newProduct;
+    } catch (err) {
+      if (err instanceof APIError) {
+        throw err;
+      }
+      throw new APIError("Service Error", STATUS_CODE.INTERNAL_ERROR, err);
+    }
+  }
+
+  async findSpecificAccessoryProduct(id) {
+    try {
+      const findSpecificProduct =
+        await this.accessory.captureSpecificAccessoryForDetails(id);
+      return findSpecificProduct;
+    } catch (error) {
+      throw new APIError(
+        "Error finding specific accessory product",
+        STATUS_CODE.INTERNAL_ERROR,
+        "Internal server error"
+      );
+    }
+  }
+
+  async getProductTransferHistory({ id }) {
+    try {
+      const transferHistory =
+        await this.accessory.captureSpecificAccessoryForTransferHistory({ id });
+      return transferHistory;
+    } catch (err) {
+      if (err instanceof APIError) {
+        throw err;
+      }
+      throw new APIError(
+        "Item Service Error",
+        STATUS_CODE.INTERNAL_ERROR,
+        "Cannot find item"
+      );
+    }
+  }
+
+  async getProductHistory({ id }) {
+    try {
+      const history = await this.accessory.captureSpecificAccessoryForHistory({
+        id,
+      });
+      if (history.length === 0) {
+        throw new APIError(
+          "No history found for this product",
+          STATUS_CODE.NOT_FOUND,
+          "No history found"
+        );
+      }
+      return history;
+    } catch (err) {
+      if (err instanceof APIError) {
+        throw err;
+      }
+      throw new APIError(
+        "Item Service Error",
+        STATUS_CODE.INTERNAL_ERROR,
+        "Cannot find item"
+      );
+    }
+  }
+
+  async confirmDistribution(confirmDeliveryDetails) {
+    try {
+      const { shopname, userId, stockId, transferID } = confirmDeliveryDetails;
+
+      let [accessoryProduct, shopFound, transferDetails] = await Promise.all([
+        this.accessory.findItem(stockId),
+        this.shop.findShop({ name: shopname }),
+        this.accessory.findAccessoryTransferHistory(transferID),
+      ]);
+
+      if (!accessoryProduct) {
+        throw new APIError(
+          "Not Found",
+          STATUS_CODE.NOT_FOUND,
+          "PRODUCT NOT FOUND"
+        );
+      } else if (accessoryProduct.stockStatus === "deleted") {
+        throw new APIError(
+          "Not Found",
+          STATUS_CODE.NOT_FOUND,
+          "PRODUCT IS DELETED"
+        );
+      } else if (accessoryProduct.stockStatus === "sold") {
+        throw new APIError(
+          "Not Found",
+          STATUS_CODE.NOT_FOUND,
+          "PRODUCT IS SOLD"
+        );
+      }
+      if (!transferDetails) {
+        throw new APIError(
+          "Not Found",
+          STATUS_CODE.BAD_REQUEST,
+          "TRANSFER HISTORY NOT FOUND"
+        );
+      }
+      if (transferDetails.status === "confirmed") {
+        throw new APIError(
+          "Already Confirmed",
+          STATUS_CODE.BAD_REQUEST,
+          "Product already confirmed"
+        );
+      }
+      if (transferDetails.productID !== stockId) {
+        throw new APIError(
+          "Mismatch Error",
+          STATUS_CODE.BAD_REQUEST,
+          "Appears a mismatch on product ID"
+        );
+      }
+      if (!shopFound) {
+        throw new APIError(
+          "Not Found",
+          STATUS_CODE.NOT_FOUND,
+          "SHOP NOT FOUND"
+        );
+      }
+      const shopId = shopFound.id;
+
+      const sellerAssigned = shopFound.assignment.find((seller) => {
+        return seller.actors.id === userId && seller.status === "assigned";
+      });
+      if (!sellerAssigned) {
+        throw new APIError(
+          "Unauthorized",
+          STATUS_CODE.UNAUTHORIZED,
+          "You are not authorized to confirm arrival"
         );
       }
 
-      const [stockId, sellerId, soldPrice, categoryId, productTransferId] =
-        numericFields.map((f) => parseInt(f, 10));
-      const quantity = parseInt(soldUnits, 10);
-
-      const [user, { product, shop }] = await Promise.all([
-        this.validateSeller(sellerId, shopname),
-        this.validateProduct(stockId, shopname, productTransferId, quantity),
+      const distributionData = {
+        id: transferID,
+        status: "confirmed",
+        userId: userId,
+      };
+      const confirmedData = {
+        shopId: shopId,
+        transferId: transferID,
+        userId: userId,
+        status: "confirmed",
+      };
+      await Promise.all([
+        this.accessory.updateConfirmedAccessoryItem(confirmedData),
+        this.accessory.updateTransferHistory(distributionData),
       ]);
-
-      await this.updateInventory(shop.id, productTransferId, quantity);
-      const profit =
-        soldPrice -
-        product.productCost * quantity -
-        product.commission * quantity;
-      return this.recordAccessorySaleTransaction({
-        productID: stockId,
-        shopID: shop.id,
-        sellerId,
-        soldPrice,
-        paymentmethod: otherDetails.paymentmethod,
-        quantity,
-        commission: parseInt(product.commission, 10),
-        categoryId,
-        profit,
-        finance: 0,
-        financeAmount: 0,
-        financer: "Captech limited",
-        customerName: otherDetails.customerName,
-        customerEmail: otherDetails.customerEmails,
-        customerPhoneNumber: otherDetails.customerphonenumber,
-      });
-    } catch (error) {
-      console.error("Accessory Sales Error:", error);
-      if (error instanceof APIError) {
-        throw error;
+    } catch (err) {
+      if (err instanceof APIError) {
+        throw err;
       }
       throw new APIError(
-        "Internal server error",
+        "Distribution Service Error",
         STATUS_CODE.INTERNAL_ERROR,
-        "internal server error"
+        "Internal server error"
       );
+    }
+  }
+
+  async updateAccessoryStock(id, updates, userId) {
+    try {
+      const accessoryId = Number(id);
+      const user = parseInt(userId, 10);
+      if (isNaN(accessoryId)) {
+        throw new APIError(
+          "Service Error",
+          STATUS_CODE.BAD_REQUEST,
+          "Invalid value provided"
+        );
+      }
+      const validUpdates = validateUpdateInputs(updates);
+      const [shopFound, accessoryFound] = await Promise.all([
+        this.shop.findShop({ name: "Kahawa 2323" }),
+        this.accessory.findItem(accessoryId),
+      ]);
+      if (!shopFound) {
+        throw new APIError(
+          "Shop not found",
+          STATUS_CODE.NOT_FOUND,
+          "Shop not found"
+        );
+      }
+      const shopId = shopFound.id;
+      if (!accessoryFound) {
+        throw new APIError(
+          "Not Found",
+          STATUS_CODE.NOT_FOUND,
+          "Accessory not found"
+        );
+      }
+      if (
+        accessoryFound.stockStatus === "sold" &&
+        validUpdates.stockStatus !== "sold"
+      ) {
+        throw new APIError(
+          "Bad Request",
+          STATUS_CODE.BAD_REQUEST,
+          `Accessory ${accessoryFound.batchNumber} already sold, please contact the admin`
+        );
+      }
+      if (validUpdates.productCost && validUpdates.commission) {
+        if (validUpdates.commission > validUpdates.productCost * 0.2) {
+          throw new APIError(
+            "Commission cannot exceed 50% of product cost",
+            STATUS_CODE.BAD_REQUEST,
+            "Commission cannot exceed 50% of product cost"
+          );
+        }
+      }
+      const updatedAccessory = await this.accessory.updateTheAccessoryStock(
+        accessoryId,
+        validUpdates,
+        user,
+        shopId
+      );
+      return updatedAccessory;
+    } catch (err) {
+      if (err instanceof APIError) {
+        throw err;
+      }
+      throw new APIError(
+        "Service Error",
+        STATUS_CODE.INTERNAL_ERROR,
+        err.message || "Unable to update accessory stock"
+      );
+    }
+  }
+
+  async findAllAccessoryProduct(page, limit) {
+    try {
+      const { stockAvailable, totalItems } =
+        await this.accessory.findAllAccessoryStockAvailable(page, limit);
+      const filteredItem = stockAvailable.filter(
+        (item) =>
+          item !== null ||
+          item.history !== null ||
+          item.stockStatus === "Deleted"
+      );
+      return { filteredItem, totalItems, page, limit };
+    } catch (err) {
+      if (err instanceof APIError) {
+        throw err;
+      }
+      throw new APIError(
+        "Item Service Error",
+        STATUS_CODE.INTERNAL_ERROR,
+        "Cannot find item"
+      );
+    }
+  }
+
+  async createNewSoftDeletion(itemId) {
+    try {
+      const deletedItem = await this.accessory.softCopyOfAccessoryItem({ id: itemId });
+      return deletedItem;
+    } catch (err) {
+      if (err instanceof APIError) {
+        throw err;
+      }
+      throw new APIError(
+        "Distribution Service Error",
+        STATUS_CODE.INTERNAL_ERROR,
+        err
+      );
+    }
+  }
+
+  async searchForAccessory(searchItem) {
+    try {
+      const searchResult = await this.accessory.searchAccessoryProducts(searchItem);
+      return searchResult;
+    } catch (err) {
+      if (err instanceof APIError) {
+        throw err;
+      }
+      throw new APIError("Search Error", STATUS_CODE.INTERNAL_ERROR, err);
     }
   }
 }
 
-export { AccessorySalesService };
+export { AccessoryManagementService };

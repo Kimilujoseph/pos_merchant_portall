@@ -1,6 +1,6 @@
 import express from "express";
 import session from "express-session";
-import MySQLStore from 'express-mysql-session';
+import MySQLStore from "express-mysql-session";
 import morgan from "morgan";
 import cookies from "cookie-parser";
 import { ErrorHandler } from "./Utils/error-handler.js";
@@ -8,41 +8,48 @@ import inventoryRoutes from "./Api/routes/inventory-management-routes.js";
 import searchroutes from "./Api/routes/search-management-route.js";
 import shoproutes from "./Api/routes/shop-inventory-routes.js";
 import userRoutes from "./Api/routes/usermanagement-routes.js";
-import transferRoutes from "./Api/routes/transfer-management-routes.js"
+import transferRoutes from "./Api/routes/transfer-management-routes.js";
 import distributionRoutes from "./Api/routes/distribution-management-route.js";
 import mobileRoutes from "./Api/routes/mobile-management-routes.js";
+import accessoryRoutes from "./Api/routes/accessory-management-routes.js";
+import supplierRoutes from "./Api/routes/supplier-management-routes.js";
+import financerRoutes from "./Api/routes/financer-management-routes.js";
 import salesroute from "./Api/routes/salesroutes.js";
 import categoryRoutes from "./Api/routes/category-management-routes.js";
+import customerRoutes from "./Api/routes/customer-management-routes.js";
 import config from "./Config/index.js";
 const { APP_SECRET, MONGO_URL } = config;
 import path from "path";
 import { fileURLToPath } from "url";
-import expressEjsLayouts from "express-ejs-layouts";
+
 import dotenv from "dotenv";
 import cors from "cors";
-import { verifyUser } from "./middleware/verification.js";
+import verifyUser from "./middleware/verification.js";
 
 dotenv.config();
+
+// A more compatible way to get the directory name
+const __dirname = path.resolve(path.dirname(''));
+
 //session
 const MySQLStoreSession = MySQLStore(session);
 
 const sessionStore = new MySQLStoreSession({
-  host: 'localhost',
+  host: "localhost",
   port: 3306,
-  user: 'captechl_root', // MySQL username
-  password: 'Captech2024', // MySQL password
-  database: 'captech', // MySQL database name
-  createDatabaseTable: true, // Create sessions table if it doesn't exist
+  user: "captechl_root",
+  password: "Captech2024",
+  database: "captech",
+  createDatabaseTable: true,
   schema: {
-    tableName: 'sessions', // Name of the sessions table
+    tableName: "sessions", // Name of the sessions table
     columnNames: {
-      session_id: 'session_id',
-      expires: 'expires',
-      data: 'data',
+      session_id: "session_id",
+      expires: "expires",
+      data: "data",
     },
   },
 });
-
 
 sessionStore.on("error", function (error) {
   assert.ifError(error);
@@ -50,9 +57,6 @@ sessionStore.on("error", function (error) {
 });
 
 const app = express();
-// Define __dirname
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 const App = async (app) => {
   app.use(express.json());
@@ -62,15 +66,15 @@ const App = async (app) => {
   //SET COOKIES
   app.use(cookies("captecstoresession"));
   // Set EJS as the view engine
-  app.use(expressEjsLayouts);
-  app.set("view engine", "ejs");
-  app.set("views", path.join(__dirname, "views"));
-  app.set("layout", "layouts/main");
+  // app.use(expressEjsLayouts);
+  // app.set("view engine", "ejs");
+  // app.set("views", path.join(__dirname, "views"));
+  // app.set("layout", "layouts/main");
 
   // Enable CORS
   app.use(
     cors({
-      origin: ["https://captechlimited.co.ke"],
+      origin: ["http://localhost:4422"],
       credentials: true,
     })
   );
@@ -78,7 +82,7 @@ const App = async (app) => {
   //setup session
   app.use(
     session({
-      secret: 'captecstoresession',
+      secret: "captecstoresession",
       resave: false,
       saveUninitialized: false,
       store: sessionStore,
@@ -88,17 +92,19 @@ const App = async (app) => {
       },
     })
   );
-
-
   app.use("/api/inventory", inventoryRoutes);
   app.use("/api/inventory", mobileRoutes);
+  app.use("/api/inventory", accessoryRoutes);
+  app.use("/api/supplier", supplierRoutes);
+  app.use("/api/financer", financerRoutes);
   app.use("/api/user", userRoutes);
   app.use("/api/shop", shoproutes);
   app.use("/api/sales", salesroute);
   app.use("/api/category", categoryRoutes);
   app.use("/api/search", searchroutes);
   app.use("/api/distribution", distributionRoutes);
-  app.use("/api/transfer", transferRoutes)
+  app.use("/api/transfer", transferRoutes);
+  app.use("/api/customer", customerRoutes);
   app.use("/api/status", (req, res) => {
     res.status(200).json({ message: "Server is up and running" });
   });

@@ -1,7 +1,7 @@
 // Import necessary modules
 import express from 'express';
 const router = express.Router();
-import { verifyUser } from '../../middleware/verification.js';
+import verifyUser from '../../middleware/verification.js';
 import { createCategory, updateCategory, getCategoryById, getAllCategories, getCategoryByShop } from '../controllers/category-managment-controller.js';
 
 

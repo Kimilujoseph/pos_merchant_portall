@@ -3,6 +3,25 @@ import { Prisma } from "@prisma/client";
 import { APIError, STATUS_CODE } from "../../Utils/app-error.js";
 const prisma = new PrismaClient();
 class Sales {
+  async createPayment(paymentData) {
+    try {
+      const payment = await prisma.payment.create({
+        data: {
+          ...paymentData,
+          saleId: 1, // Placeholder, this will be replaced with the actual saleId
+          financerId: paymentData.financerId, // Store financerId
+        },
+      });
+      return payment;
+    } catch (err) {
+      throw new APIError(
+        "database error",
+        STATUS_CODE.INTERNAL_ERROR,
+        "internal server error"
+      );
+    }
+  }
+
   async createnewMobilesales(salesDetails) {
     try {
       const successfullsale = await prisma.mobilesales.create({

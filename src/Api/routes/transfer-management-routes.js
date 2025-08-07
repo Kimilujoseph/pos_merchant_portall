@@ -2,7 +2,7 @@ import express from "express"
 
 const router = express.Router();
 
-import { verifyUser } from "../../middleware/verification.js"
+import verifyUser from "../../middleware/verification.js"
 
 
 import {

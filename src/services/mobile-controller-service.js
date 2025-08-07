@@ -1,8 +1,6 @@
 import { promises as fs } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import bwipjs from "bwip-js";
-import { PDFDocument, rgb } from "pdf-lib";
 import { phoneinventoryrepository } from "../databases/repository/mobile-inventory-repository.js";
 import { ShopmanagementRepository } from "../databases/repository/shop-repository.js";
 import { Sales } from "../databases/repository/sales-repository.js";
@@ -10,10 +8,7 @@ import { CategoryManagementRepository } from "../databases/repository/category-c
 import { APIError, STATUS_CODE } from "../Utils/app-error.js";
 import { validateUpdateInputs } from "../helpers/updateValidationHelper.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-console.log("file", __filename);
-console.log("dirname", __dirname);
+const __dirname = path.resolve(path.dirname(''));
 
 class MobilemanagementService {
   constructor() {
@@ -25,7 +20,7 @@ class MobilemanagementService {
   //get product profile
   async createnewPhoneproduct(newphoneproduct) {
     try {
-      const { phoneDetails, financeDetails, user, availableStock } =
+      const { phoneDetails, user, availableStock, supplierId, paymentStatus } =
         newphoneproduct;
       const { CategoryId } = phoneDetails;
       const category = parseInt(CategoryId, 10);
@@ -37,7 +32,7 @@ class MobilemanagementService {
           "Invalid category"
         );
       }
-      const shopFound = await this.shop.findShop({ name: "Kahawa 2323" });
+      const shopFound = await this.shop.findShop({ name: "South B" });
       if (!shopFound) {
         throw new APIError(
           "Shop not found",
@@ -48,9 +43,10 @@ class MobilemanagementService {
       const shopId = shopFound.id;
       const payload = {
         phoneDetails,
-        financeDetails,
         shopId,
         user,
+        supplierId,
+        paymentStatus,
       };
       const newProduct = await this.mobile.createPhonewithFinaceDetails(
         payload
@@ -157,7 +153,11 @@ class MobilemanagementService {
         this.shop.findShop({ name: shopname }),
         this.mobile.findMobileTransferHistory(transferID),
       ]);
-      console.log(userId);
+      console.log("confirmDistribution - mobileProduct:", mobileProduct);
+      console.log("confirmDistribution - shopFound:", shopFound);
+      console.log("confirmDistribution - transferDetails:", transferDetails);
+      console.log("confirmDistribution - userId:", userId);
+
       //i have seen it wise if to verify if product exist and verify transfer
       if (!mobileProduct) {
         throw new APIError(
@@ -231,10 +231,10 @@ class MobilemanagementService {
         userId: userId,
         status: "confirmed",
       };
-      await Promise.all([
-        this.mobile.updateConfirmedmobileItem(confirmedData),
-        this.mobile.updatetransferHistory(distributionData),
-      ]);
+      const updateMobileItemResult = await this.mobile.updateConfirmedmobileItem(confirmedData);
+      const updateTransferHistoryResult = await this.mobile.updatetransferHistory(distributionData);
+      console.log("confirmDistribution - updateMobileItemResult:", updateMobileItemResult);
+      console.log("confirmDistribution - updateTransferHistoryResult:", updateTransferHistoryResult);
     } catch (err) {
       console.log("ERERE", err);
       if (err instanceof APIError) {

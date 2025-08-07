@@ -94,7 +94,7 @@ class userManagmentService {
       if (err instanceof APIError) {
         throw err;
       }
-      console.log(err)
+      console.log(err);
       throw new APIError(
         "Service Error",
         STATUS_CODE.INTERNAL_ERROR,
@@ -122,7 +122,6 @@ class userManagmentService {
         ...userFound,
         assignedShop: shopAssigned[0]?.shops.shopName,
       };
-      console.log("user", userAvailable);
       const { accessorySales, mobileSales } = await Promise.all([
         this.repository.findUserAccesorySales(userId),
         this.repository.findUserMobilesSales(userId),

@@ -25,6 +25,7 @@ const createmainUser = async (req, res, next) => {
       phonenumber,
       nextofkinphonenumber,
       nextofkinname,
+      phone: phonenumber,
     });
     return res.status(201).json({
       status: 201,
@@ -63,6 +64,7 @@ const createSeller = async (req, res, next) => {
       nextofkinphonenumber,
       nextofkinname,
       phonenumber,
+      phone: phonenumber,
     });
     console.log(newUser);
     return res.status(201).json({
