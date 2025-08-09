@@ -20,16 +20,15 @@ model Customer {
 }
 
 model Payment {
-  id            Int             @id @default(autoincrement())
-  saleId        Int
-  amount        Decimal         @db.Decimal(10, 2)
-  paymentMethod String
-  status        String          @default("completed") // e.g., completed, pending, failed
-  transactionId String? // From payment processor
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
-  sale          mobilesales?    @relation("mobile_payments", fields: [saleId], references: [id], map: "mobile_payments_saleId_fkey")
-  accessorySale accessorysales? @relation("accessory_payments", fields: [saleId], references: [id], map: "accessory_payments_saleId_fkey")
+  id             Int              @id @default(autoincrement())
+  amount         Decimal          @db.Decimal(10, 2)
+  paymentMethod  String
+  status         String           @default("completed") // e.g., completed, pending, failed
+  transactionId  String? // From payment processor
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  mobilesales    mobilesales[]
+  accessorysales accessorysales[]
 }
 
 model Return {
@@ -126,33 +125,32 @@ model accessoryItems {
 }
 
 model accessorysales {
-  id                  Int                               @id @unique(map: "_id_UNIQUE") @default(autoincrement()) @map("_id")
-  productID           Int
-  shopID              Int
-  sellerId            Int
-  soldPrice           Decimal                           @db.Decimal(10, 2)
-  profit              Int                               @db.UnsignedInt
-  customerName        String?                           @default("doe") @db.VarChar(45)
-  customerEmail       String?                           @default("doe@gmail.com") @db.VarChar(45)
-  customerPhoneNumber String?                           @default("07000000") @db.VarChar(45)
-  paymentmethod       accessorysales_paymentmethod?
-  createdAt           DateTime?                         @default(now()) @db.DateTime(0)
-  commisssionStatus   accessorysales_commisssionStatus?
-  quantity            Int?                              @default(0)
-  commission          Int?                              @default(0)
-  categoryId          Int?
-  financeStatus       String?                           @default("paid") @db.VarChar(255)
-  financeAmount       Int?                              @default(0)
-  accessories         accessories                       @relation(fields: [productID], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_accessorysales_1")
-  actors              actors                            @relation(fields: [sellerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_accessorysales_2")
-  shops               shops                             @relation(fields: [shopID], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_accessorysales_3")
-  categories          categories?                       @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_accessorysales_category")
-  financerId          Int?
-  financer            Financer?                         @relation(fields: [financerId], references: [id])
-  customerId          Int?
-  customer            Customer?                         @relation(fields: [customerId], references: [id])
-  payments            Payment[]                         @relation("accessory_payments")
-  returns             Return[]                          @relation("accessory_returns")
+  id                 Int                                  @id @unique(map: "_id_UNIQUE") @default(autoincrement()) @map("_id")
+  productID          Int
+  shopID             Int
+  sellerId           Int
+  soldPrice          Decimal                              @db.Decimal(10, 2)
+  profit             Int                                  @db.UnsignedInt
+  createdAt          DateTime?                            @default(now()) @db.DateTime(0)
+  commisssionStatus  accessorysales_commisssionStatus?
+  quantity           Int?                                 @default(0)
+  commission         Int?                                 @default(0)
+  commissionPaid     Int?                                 @default(0)
+  categoryId         Int?
+  financeStatus      String?                              @default("paid") @db.VarChar(255)
+  financeAmount      Int?                                 @default(0)
+  paymentId          Int?
+  payment            Payment?                             @relation(fields: [paymentId], references: [id])
+  accessories        accessories                          @relation(fields: [productID], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_accessorysales_1")
+  actors             actors                               @relation(fields: [sellerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_accessorysales_2")
+  shops              shops                                @relation(fields: [shopID], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_accessorysales_3")
+  categories         categories?                          @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_accessorysales_category")
+  financerId         Int?
+  financer           Financer?                            @relation(fields: [financerId], references: [id])
+  customerId         Int?
+  customer           Customer?                            @relation(fields: [customerId], references: [id])
+  returns            Return[]                             @relation("accessory_returns")
+  commissionPayments CommissionPaymentsOnAccessorySales[]
 
   @@index([productID], map: "fk_accessorysales_1_idx")
   @@index([sellerId], map: "fk_accessorysales_2_idx")
@@ -163,6 +161,7 @@ model accessorysales {
   @@index([sellerId], map: "idx_sales_seller")
   @@index([customerId])
   @@index([financerId])
+  @@index([paymentId])
 }
 
 model accessorytransferhistory {
@@ -340,34 +339,33 @@ model mobiles {
 }
 
 model mobilesales {
-  id                  Int                            @id @unique(map: "_id_UNIQUE") @default(autoincrement()) @map("_id")
-  productID           Int
-  shopID              Int
-  sellerId            Int
-  customerName        String?                        @default("doe") @db.VarChar(45)
-  customerEmail       String?                        @default("doe@gmail.com") @db.VarChar(45)
-  customerPhoneNumber String?                        @default("07000000") @db.VarChar(45)
-  paymentmethod       mobilesales_paymentmethod?
-  createdAt           DateTime?                      @default(now()) @db.DateTime(0)
-  commisssionStatus   mobilesales_commisssionStatus?
-  quantity            Int?                           @default(0)
-  salesType           String?                        @default("direct") @db.VarChar(255)
-  financeStatus       String?                        @default("captech") @db.VarChar(255)
-  financeAmount       Int?                           @default(0)
-  categoryId          Int?
-  commission          Int?                           @default(0)
-  profit              Int?                           @default(0)
-  soldPrice           Int?                           @default(0)
-  categories          categories?                    @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_mobileSales_category")
-  mobiles             mobiles                        @relation(fields: [productID], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_mobilesales_1")
-  actors              actors                         @relation(fields: [sellerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_mobilesales_2")
-  shops               shops                          @relation(fields: [shopID], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_mobilesales_3")
-  financerId          Int?
-  financer            Financer?                      @relation(fields: [financerId], references: [id])
-  customerId          Int?
-  customer            Customer?                      @relation(fields: [customerId], references: [id])
-  payments            Payment[]                      @relation("mobile_payments")
-  returns             Return[]                       @relation("mobile_returns")
+  id                 Int                               @id @unique(map: "_id_UNIQUE") @default(autoincrement()) @map("_id")
+  productID          Int
+  shopID             Int
+  sellerId           Int
+  createdAt          DateTime?                         @default(now()) @db.DateTime(0)
+  commisssionStatus  mobilesales_commisssionStatus?
+  quantity           Int?                              @default(0)
+  salesType          String?                           @default("direct") @db.VarChar(255)
+  financeStatus      String?                           @default("captech") @db.VarChar(255)
+  financeAmount      Int?                              @default(0)
+  categoryId         Int?
+  commission         Int?                              @default(0)
+  commissionPaid     Int?                              @default(0)
+  profit             Int?                              @default(0)
+  soldPrice          Int?                              @default(0)
+  paymentId          Int?
+  payment            Payment?                          @relation(fields: [paymentId], references: [id])
+  categories         categories?                       @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_mobileSales_category")
+  mobiles            mobiles                           @relation(fields: [productID], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_mobilesales_1")
+  actors             actors                            @relation(fields: [sellerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_mobilesales_2")
+  shops              shops                             @relation(fields: [shopID], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_mobilesales_3")
+  financerId         Int?
+  financer           Financer?                         @relation(fields: [financerId], references: [id])
+  customerId         Int?
+  customer           Customer?                         @relation(fields: [customerId], references: [id])
+  returns            Return[]                          @relation("mobile_returns")
+  commissionPayments CommissionPaymentsOnMobileSales[]
 
   @@index([productID], map: "fk_mobilesales_1_idx")
   @@index([sellerId], map: "fk_mobilesales_2_idx")
@@ -379,6 +377,7 @@ model mobilesales {
   @@index([sellerId], map: "idx_sales_seller")
   @@index([financeStatus], map: "idx_sales_finance_status")
   @@index([customerId])
+  @@index([paymentId])
 }
 
 model shops {
@@ -496,33 +495,57 @@ enum ExpenseCategory {
 }
 
 model Expense {
-  id          Int             @id @default(autoincrement())
-  description String
-  amount      Decimal         @db.Decimal(10, 2)
-  category    ExpenseCategory
-  expenseDate DateTime
-  shopId      Int?
-  shop        shops?          @relation(fields: [shopId], references: [id])
+  id            Int             @id @default(autoincrement())
+  description   String
+  amount        Decimal         @db.Decimal(10, 2)
+  category      ExpenseCategory
+  expenseDate   DateTime
+  shopId        Int?
+  shop          shops?          @relation(fields: [shopId], references: [id])
   processedById Int
-  processedBy actors          @relation(fields: [processedById], references: [id])
+  processedBy   actors          @relation(fields: [processedById], references: [id])
 
   @@index([shopId])
   @@index([processedById])
 }
 
 model CommissionPayment {
-  id              Int      @id @default(autoincrement())
+  id              Int                                  @id @default(autoincrement())
   sellerId        Int
-  seller          actors   @relation("seller_commissions", fields: [sellerId], references: [id])
-  amountPaid      Decimal  @db.Decimal(10, 2)
+  seller          actors                               @relation("seller_commissions", fields: [sellerId], references: [id])
+  amountPaid      Decimal                              @db.Decimal(10, 2)
   paymentDate     DateTime
   periodStartDate DateTime
   periodEndDate   DateTime
   processedById   Int
-  processedBy     actors   @relation("processed_commissions", fields: [processedById], references: [id])
+  processedBy     actors                               @relation("processed_commissions", fields: [processedById], references: [id])
+  mobileSales     CommissionPaymentsOnMobileSales[]
+  accessorySales  CommissionPaymentsOnAccessorySales[]
 
   @@index([sellerId])
   @@index([processedById])
+}
+
+model CommissionPaymentsOnMobileSales {
+  mobileSale          mobilesales       @relation(fields: [mobileSaleId], references: [id])
+  mobileSaleId        Int
+  commissionPayment   CommissionPayment @relation(fields: [commissionPaymentId], references: [id])
+  commissionPaymentId Int
+  assignedAt          DateTime          @default(now())
+  assignedBy          String
+
+  @@id([commissionPaymentId, mobileSaleId])
+}
+
+model CommissionPaymentsOnAccessorySales {
+  accessorySale       accessorysales    @relation(fields: [accessorySaleId], references: [id])
+  accessorySaleId     Int
+  commissionPayment   CommissionPayment @relation(fields: [commissionPaymentId], references: [id])
+  commissionPaymentId Int
+  assignedAt          DateTime          @default(now())
+  assignedBy          String
+
+  @@id([commissionPaymentId, accessorySaleId])
 }
 
 model SalaryPayment {

@@ -173,7 +173,7 @@ const removeAssignment = async (req, res) => {
   try {
     const user = req.user;
     if (user.role !== "manager") {
-      res.status(403).json({ message: "unauthorised", error: true });
+      return res.status(403).json({ message: "unauthorised", error: true });
     }
     const { assignmentId, shopname } = req.body;
     const remove = await ShopManagementSystem.removeassignment({

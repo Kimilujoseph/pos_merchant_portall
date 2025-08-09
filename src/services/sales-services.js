@@ -21,7 +21,7 @@ class salesmanagment {
   }
 
   async createBulkSale(salePayload, user, financerId) {
-    const { shopName, customerdetails, bulksales } = salePayload;
+    const { shopName, customerdetails, bulksales, salesStatus, paymentMethod, transactionId } = salePayload;
     const { id: sellerId } = user;
 
     const shop = await this.shop.findShop({ shopName });
@@ -36,43 +36,66 @@ class salesmanagment {
 
     const successfulSales = [];
     let totalAmount = 0;
+    const salesToCreate = [];
+
     for (const sale of bulksales) {
       const { itemType, items } = sale;
       for (const item of items) {
         const { productId, soldprice, soldUnits } = item;
         totalAmount += soldprice * soldUnits;
-        const saleData = {
-          productID: productId,
-          shopID: shop.id,
-          sellerId,
-          soldPrice: soldprice,
-          quantity: soldUnits,
-          customerId: customer.id,
-          // ... other sale details
-        };
 
-        let createdSale;
-        if (itemType === 'mobiles') {
-          createdSale = await this.sales.createnewMobilesales(saleData);
-        } else if (itemType === 'accessories') {
-          createdSale = await this.sales.createnewAccessoriesales(saleData);
+        const productDetails = itemType === 'mobiles'
+          ? await this.mobile.findMobileById(productId)
+          : await this.inventory.findAccessoryById(productId);
+
+        if (!productDetails) {
+          throw new APIError(`Product with ID ${productId} not found`, STATUS_CODE.NOT_FOUND);
         }
 
-        if (createdSale) {
-          successfulSales.push({ status: 'fulfilled', value: createdSale });
-        } else {
-          successfulSales.push({ status: 'rejected', reason: 'Sale creation failed' });
-        }
+        const profit = (soldprice - productDetails.productCost) * soldUnits;
+        const commission = productDetails.commission * soldUnits;
+
+        salesToCreate.push({
+          itemType,
+          saleData: {
+            productID: productId,
+            shopID: shop.id,
+            sellerId,
+            soldPrice: soldprice,
+            quantity: soldUnits,
+            customerId: customer.id,
+            profit,
+            commission,
+          },
+        });
       }
     }
 
     const payment = await this.sales.createPayment({
       amount: totalAmount,
-      paymentMethod: 'mpesa', // Assuming a default or derived payment method
-      status: 'completed',
-      saleId: successfulSales[0].value.id,
-      financerId: financerId, // Pass financerId here
+      paymentMethod: paymentMethod,
+      status: salesStatus,
+      financerId: financerId,
+      transactionId: transactionId || null,
     });
+
+    for (const sale of salesToCreate) {
+      const { itemType, saleData } = sale;
+      saleData.paymentId = payment.id;
+
+      let createdSale;
+      if (itemType === 'mobiles') {
+        createdSale = await this.sales.createnewMobilesales(saleData);
+      } else if (itemType === 'accessories') {
+        createdSale = await this.sales.createnewAccessoriesales(saleData);
+      }
+
+      if (createdSale) {
+        successfulSales.push({ status: 'fulfilled', value: createdSale });
+      } else {
+        successfulSales.push({ status: 'rejected', reason: 'Sale creation failed' });
+      }
+    }
 
     return { successfulSales, customer, payment };
   }

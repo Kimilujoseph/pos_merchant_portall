@@ -8,8 +8,7 @@ class Sales {
       const payment = await prisma.payment.create({
         data: {
           ...paymentData,
-          saleId: 1, // Placeholder, this will be replaced with the actual saleId
-          financerId: paymentData.financerId, // Store financerId
+          financerId: paymentData.financerId,
         },
       });
       return payment;
@@ -94,17 +93,17 @@ class Sales {
       const includeClause =
         salesTable === "mobilesales"
           ? {
-              mobiles: true,
-              shops: true,
-              categories: true,
-              actors: true,
-            }
+            mobiles: true,
+            shops: true,
+            categories: true,
+            actors: true,
+          }
           : {
-              accessories: true,
-              shops: true,
-              categories: true,
-              actors: true,
-            };
+            accessories: true,
+            shops: true,
+            categories: true,
+            actors: true,
+          };
       const [results, totals] = await Promise.all([
         salesModel.findMany({
           where: whereClause,
@@ -163,12 +162,12 @@ class Sales {
     }
     return salesTable === "mobilesales"
       ? prisma.mobiles.findMany({
-          where: { id: { in: productID } },
-          include: { categories: true },
-        })
+        where: { id: { in: productID } },
+        include: { categories: true },
+      })
       : prisma.accessories.findMany({
-          where: { id: { in: productID } },
-        });
+        where: { id: { in: productID } },
+      });
   }
   mapFinanceDetails(sale) {
     return {
@@ -190,33 +189,33 @@ class Sales {
         OR:
           salesTable === "mobilesales"
             ? [
-                { salesType: "direct" },
-                {
-                  salesType: "finance",
-                  financeStatus: { not: "pending" },
-                },
-              ]
+              { salesType: "direct" },
+              {
+                salesType: "finance",
+                financeStatus: { not: "pending" },
+              },
+            ]
             : [
-                { financeStatus: "N/A" },
-                {
-                  financeStatus: { not: "pending" },
-                },
-              ],
+              { financeStatus: "N/A" },
+              {
+                financeStatus: { not: "pending" },
+              },
+            ],
       };
       const includeClause =
         salesTable === "mobilesales"
           ? {
-              mobiles: true,
-              shops: true,
-              categories: true,
-              actors: true,
-            }
+            mobiles: true,
+            shops: true,
+            categories: true,
+            actors: true,
+          }
           : {
-              accessories: true,
-              shops: true,
-              categories: true,
-              actors: true,
-            };
+            accessories: true,
+            shops: true,
+            categories: true,
+            actors: true,
+          };
 
       const results = await salesModel.findMany({
         where: whereClause,
@@ -334,23 +333,23 @@ class Sales {
     // Add table-specific properties
     return tableName === "mobilesales"
       ? {
-          ...base,
-          saleType: sale.salesType,
-          productDetails: {
-            ...base.productDetails,
-            storage: sale.mobiles?.storage,
-            color: sale.mobiles?.color,
-          },
-        }
+        ...base,
+        saleType: sale.salesType,
+        productDetails: {
+          ...base.productDetails,
+          storage: sale.mobiles?.storage,
+          color: sale.mobiles?.color,
+        },
+      }
       : {
-          ...base,
-          saleType: sale.financeStatus === "N/A" ? "direct" : "finance",
-          productDetails: {
-            ...base.productDetails,
-            color: sale.accessories?.color,
-            stockStatus: sale.accessories?.stockStatus,
-          },
-        };
+        ...base,
+        saleType: sale.financeStatus === "N/A" ? "direct" : "finance",
+        productDetails: {
+          ...base.productDetails,
+          color: sale.accessories?.color,
+          stockStatus: sale.accessories?.stockStatus,
+        },
+      };
   }
   // sales.repository.js
 
