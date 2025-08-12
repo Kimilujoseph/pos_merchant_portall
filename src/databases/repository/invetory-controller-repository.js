@@ -409,10 +409,11 @@ class InventorymanagementRepository {
       );
     }
   }
-  async updateTransferHistory(id, updates) {
+  async updateTransferHistory(id, updates, tx) {
+    const prismaClient = tx || prisma;
     try {
       const updatedTransferHistory =
-        await prisma.accessorytransferhistory.update({
+        await prismaClient.accessorytransferhistory.update({
           where: {
             id: id,
           },

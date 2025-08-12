@@ -118,7 +118,7 @@ class AccessoryManagementService {
 
       let [accessoryProduct, shopFound, transferDetails] = await Promise.all([
         this.accessory.findItem(stockId),
-        this.shop.findShop({ name: "Kahawa 2323" }),
+        this.shop.findShop({ name: "South B" }),
         this.accessory.findAccessoryTransferHistory(transferID),
       ]);
 
@@ -222,7 +222,7 @@ class AccessoryManagementService {
       }
       const validUpdates = validateUpdateInputs(updates);
       const [shopFound, accessoryFound] = await Promise.all([
-        this.shop.findShop({ name: "Kahawa 2323" }),
+        this.shop.findShop({ name: "South B" }),
         this.accessory.findItem(accessoryId),
       ]);
       if (!shopFound) {

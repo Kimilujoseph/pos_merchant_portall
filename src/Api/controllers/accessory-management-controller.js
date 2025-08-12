@@ -1,7 +1,9 @@
 import { AccessoryManagementService } from "../../services/accessory-controller-service.js";
+import { ConfirmAccessorymanagementService } from "../../services/confirmAccessories_service.js";
 import { APIError, STATUS_CODE } from "../../Utils/app-error.js";
 
 const accessoryManagementService = new AccessoryManagementService();
+const confirmAccessoryArrivalManagement = new ConfirmAccessorymanagementService()
 
 const addNewAccessoryProduct = async (req, res, next) => {
   try {
@@ -173,7 +175,7 @@ const confirmAccessoryArrival = async (req, res, next) => {
     const stockId = parseInt(productId, 10);
     const transferID = parseInt(transferId, 10);
     userId = parseInt(user.id, 10);
-    await accessoryManagementService.confirmDistribution({
+    await confirmAccessoryArrivalManagement.confirmDistribution({
       userId,
       shopname,
       stockId,

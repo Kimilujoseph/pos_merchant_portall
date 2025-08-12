@@ -1,6 +1,7 @@
 import { InventorymanagementRepository } from "../databases/repository/invetory-controller-repository.js";
 import { ShopmanagementRepository } from "../databases/repository/shop-repository.js";
 import { APIError, STATUS_CODE } from "../Utils/app-error.js";
+import prisma from "../databases/client.js";
 
 class ConfirmAccessorymanagementService {
   constructor(repository = {}) {
@@ -43,25 +44,29 @@ class ConfirmAccessorymanagementService {
           "Invalid values provided"
         );
       }
-      let [accessoryProduct, shopFound] = await Promise.all([
-        this.repository.inventory.findProductById(stockId),
-        this.repository.shop.findShop({ name: shopname }),
-      ]);
 
-      this.validationProcess(accessoryProduct, shopFound, parsedUserId);
-      const newAccessory = this.findTheAccessory(
-        shopFound,
-        parsedTransferId,
-        parsedQuantity
-      );
-      const shopId = parseInt(shopFound.id);
-      const accessoryId = newAccessory.accessoryID;
-      await this.transferProcess(
-        parsedTransferId,
-        parsedUserId,
-        shopId,
-        accessoryId
-      );
+      await prisma.$transaction(async (tx) => {
+        let [accessoryProduct, shopFound] = await Promise.all([
+          this.repository.inventory.findProductById(stockId, tx),
+          this.repository.shop.findShop({ name: shopname }, tx),
+        ]);
+
+        this.validationProcess(accessoryProduct, shopFound, parsedUserId);
+        const newAccessory = this.findTheAccessory(
+          shopFound,
+          parsedTransferId,
+          parsedQuantity
+        );
+        const shopId = parseInt(shopFound.id);
+        const accessoryId = newAccessory.accessoryID;
+        await this.transferProcess(
+          parsedTransferId,
+          parsedUserId,
+          shopId,
+          accessoryId,
+          tx
+        );
+      });
     } catch (err) {
       if (err instanceof APIError) {
         throw err;
@@ -131,7 +136,7 @@ class ConfirmAccessorymanagementService {
     return newAccessory;
   }
 
-  async transferProcess(parsedTransferId, parsedUserId, shopId, accessoryId) {
+  async transferProcess(parsedTransferId, parsedUserId, shopId, accessoryId, tx) {
     const updates = {
       status: "confirmed",
       confirmedBy: parsedUserId,
@@ -140,13 +145,15 @@ class ConfirmAccessorymanagementService {
     await Promise.all([
       this.repository.inventory.updateTransferHistory(
         parsedTransferId,
-        updates
+        updates,
+        tx
       ),
       this.repository.shop.updateConfirmationOfAccessory(
         shopId,
         parsedTransferId,
         parsedUserId,
-        accessoryId
+        accessoryId,
+        tx
       ),
     ]);
   }

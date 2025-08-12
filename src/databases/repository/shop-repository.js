@@ -560,10 +560,12 @@ class ShopmanagementRepository {
     shopId,
     transferproductId,
     userId,
-    accessoryId
+    accessoryId,
+    tx
   ) {
+    const prismaClient = tx || this.prisma;
     try {
-      const updatedNewAccessoryItem = await this.prisma.accessoryItems.update({
+      const updatedNewAccessoryItem = await prismaClient.accessoryItems.update({
         where: {
           accessoryID_shopID_transferId: {
             accessoryID: accessoryId,
