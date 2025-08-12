@@ -133,9 +133,10 @@ class InventorymanagementRepository {
       );
     }
   }
-  async findProductById(id) {
+  async findProductById(id, tx) {
+    const prismaClient = tx || prisma;
     try {
-      const findItem = await prisma.accessories.findUnique({
+      const findItem = await prismaClient.accessories.findUnique({
         where: {
           id: id,
         },
@@ -332,10 +333,11 @@ class InventorymanagementRepository {
     }
   }
 
-  async createTransferHistory(id, transferData) {
+  async createTransferHistory(id, transferData, tx) {
+    const prismaClient = tx || prisma;
     try {
       const createdTransferHistory =
-        await prisma.accessorytransferhistory.create({
+        await prismaClient.accessorytransferhistory.create({
           data: {
             quantity: transferData.quantity,
             status: transferData.status,
@@ -347,10 +349,10 @@ class InventorymanagementRepository {
               connect: { id: transferData.toShop },
             },
             actors_accessorytransferhistory_transferdByToactors: {
-              connect: { id: transferData.userId },
+              connect: { id: transferData.transferdBy },
             },
             accessories: {
-              connect: { id: transferData.productId },
+              connect: { id: id },
             },
           },
         });
@@ -365,10 +367,10 @@ class InventorymanagementRepository {
     }
   }
 
-  async updateStockQuantity(productId, quantity) {
+  async updateStockQuantity(productId, quantity, tx) {
+    const prismaClient = tx || prisma;
     try {
-      //decrement quantity
-      const updateQuantity = await prisma.accessories.update({
+      const updateQuantity = await prismaClient.accessories.update({
         where: {
           id: productId,
         },
@@ -378,6 +380,7 @@ class InventorymanagementRepository {
           },
         },
       });
+      return updateQuantity;
     } catch (err) {
       throw new APIError(
         "database update error",

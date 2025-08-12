@@ -253,7 +253,7 @@ class ShopmanagementRepository {
       );
     }
   }
-  
+
   async updateShopDetails(shopID, shopDetails) {
     try {
       const shop = await this.findShopById(shopID);
@@ -477,7 +477,7 @@ class ShopmanagementRepository {
       );
     }
   }
-  
+
   async newAddedphoneItem(newItem, tx) {
     const prismaClient = tx || this.prisma;
     try {
@@ -529,9 +529,10 @@ class ShopmanagementRepository {
     }
   }
 
-  async addNewAccessory(shopId, newItem) {
+  async addNewAccessory(shopId, newItem, tx) {
+    const prismaClient = tx || this.prisma;
     try {
-      const newAccessoryItem = await this.prisma.accessoryItems.create({
+      const newAccessoryItem = await prismaClient.accessoryItems.create({
         data: {
           accessoryID: newItem.productID,
           quantity: newItem.quantity,

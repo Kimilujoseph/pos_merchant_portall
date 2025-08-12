@@ -37,9 +37,18 @@ const handleBulkDistibution = async (req, res) => {
       });
 
     } else {
-      // This part remains non-transactional for now
-      // You can implement a similar transactional method for accessories later
-      throw new APIError("Not Implemented", STATUS_CODE.NOT_IMPLEMENTED, "Accessory distribution is not yet transactional.");
+      const successfulDistributions = await distributionManager.createBulkAccessoryDistribution({
+        bulkDistribution,
+        mainShop: shopDetails.mainShop,
+        distributedShop: shopDetails.distributedShop,
+        userId: parseInt(user.id, 10),
+      });
+
+      return res.status(200).json({
+        message: "Accessory distribution process completed successfully.",
+        successfulDistributions: successfulDistributions.length,
+        error: false,
+      });
     }
   } catch (err) {
     // If the transaction fails for ANY reason, this catch block will be executed
