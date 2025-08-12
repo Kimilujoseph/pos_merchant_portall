@@ -4,7 +4,7 @@ import MySQLStore from "express-mysql-session";
 import morgan from "morgan";
 import cookies from "cookie-parser";
 import { ErrorHandler } from "./Utils/error-handler.js";
-import inventoryRoutes from "./Api/routes/inventory-management-routes.js";
+//import inventoryRoutes from "./Api/routes/inventory-management-routes.js";
 import searchroutes from "./Api/routes/search-management-route.js";
 import shoproutes from "./Api/routes/shop-inventory-routes.js";
 import userRoutes from "./Api/routes/usermanagement-routes.js";
@@ -92,7 +92,7 @@ const App = async (app) => {
       },
     })
   );
-  app.use("/api/inventory", inventoryRoutes);
+  //app.use("/api/inventory", inventoryRoutes);
   app.use("/api/inventory", mobileRoutes);
   app.use("/api/inventory", accessoryRoutes);
   app.use("/api/supplier", supplierRoutes);

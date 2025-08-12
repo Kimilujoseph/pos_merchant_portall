@@ -13,19 +13,19 @@ const addNewAccessoryProduct = async (req, res, next) => {
         "Not authorised to add new accessory"
       );
     }
-    const { accessoryDetails, financeDetails } = req.body;
-    const { supplierId } = accessoryDetails;
+    const accessoryDetails = req.body;
     const newAccessoryProduct = await accessoryManagementService.createNewAccessoryProduct(
       {
         accessoryDetails,
-        financeDetails,
         user: user.id,
-        supplierId,
       }
     );
     res.status(201).json({
       message: "Accessory successfully added",
-      data: newAccessoryProduct,
+      data: {
+        id: newAccessoryProduct.id,
+        batchNumber: newAccessoryProduct.batchNumber,
+      },
       error: false,
     });
   } catch (err) {
@@ -222,7 +222,8 @@ const createNewSoftDeletion = async (req, res, next) => {
   } catch (err) {
     if (err instanceof APIError) {
       return res.status(err.statusCode).json({ message: err.message });
-    } else {
+    }
+    else {
       return res.status(STATUS_CODE.INTERNAL_ERROR).json({ message: "Internal Server Error" });
     }
   }

@@ -4,21 +4,24 @@ import { APIError, STATUS_CODE } from "../../Utils/app-error.js";
 const prisma = new PrismaClient();
 
 class AccessoryInventoryRepository {
-  async createAccessoryWithFinanceDetails(payload) {
+  async createAccessoryWithFinanceDetails(payload, tx) {
+    const prismaClient = tx || prisma;
     try {
-      const { accessoryDetails, financeDetails, shopId, user, supplierId } = payload;
-      const newAccessoryProduct = await this.createAccessoryStock({ ...accessoryDetails, supplierId });
+      const { user, shopId, ...accessoryDetails } = payload;
+      console.log("accessoryDetails.availableStock:", accessoryDetails.availableStock);
+      const newAccessoryProduct = await this.createAccessoryStock(accessoryDetails, tx);
       const createAccessoryMetaData = await Promise.all([
-        this.createFinanceDetails(newAccessoryProduct.id, financeDetails),
         this.createHistory({
           user,
           shopId,
           productId: newAccessoryProduct.id,
           type: "new stock",
-        }),
+          quantity: accessoryDetails.availableStock,
+        }, tx),
       ]);
       return newAccessoryProduct;
     } catch (err) {
+      //console.log("Error creating accessory with finance details:", err);
       if (err instanceof APIError) {
         throw err;
       }
@@ -43,10 +46,11 @@ class AccessoryInventoryRepository {
     discount,
     barcodePath,
     supplierId,
-  }) {
+  }, tx) {
+    const prismaClient = tx || prisma;
     try {
       const category = parseInt(CategoryId, 10);
-      const stock = await prisma.accessories.create({
+      const stock = await prismaClient.accessories.create({
         data: {
           CategoryId: category,
           batchNumber,
@@ -103,18 +107,21 @@ class AccessoryInventoryRepository {
     }
   }
 
-  async createHistory({ productId, user, type, shopId }) {
+  async createHistory({ productId, user, type, shopId, quantity }, tx) {
+    const prismaClient = tx || prisma;
     try {
-      const createHistory = await prisma.accessoryHistory.create({
+      const createHistory = await prismaClient.accessoryHistory.create({
         data: {
           productID: productId,
           type: type,
           shopId: shopId,
           addedBy: user,
+          quantity: quantity
         },
       });
       return createHistory;
     } catch (err) {
+      console.error("Error in createHistory:", err);
       throw new APIError(
         "Database Error",
         STATUS_CODE.INTERNAL_ERROR,

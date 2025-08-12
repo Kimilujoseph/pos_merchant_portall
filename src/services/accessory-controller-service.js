@@ -3,6 +3,7 @@ import { ShopmanagementRepository } from "../databases/repository/shop-repositor
 import { CategoryManagementRepository } from "../databases/repository/category-contoller-repository.js";
 import { APIError, STATUS_CODE } from "../Utils/app-error.js";
 import { validateUpdateInputs } from "../helpers/updateValidationHelper.js";
+import prisma from "../databases/client.js";
 
 class AccessoryManagementService {
   constructor() {
@@ -12,44 +13,47 @@ class AccessoryManagementService {
   }
 
   async createNewAccessoryProduct(newAccessoryProduct) {
-    try {
-      const { accessoryDetails, financeDetails, user, supplierId } = newAccessoryProduct;
-      const { CategoryId } = accessoryDetails;
-      const category = parseInt(CategoryId, 10);
-      const categoryExist = await this.category.getCategoryById(category);
-      if (!categoryExist) {
-        throw new APIError(
-          "Invalid category",
-          STATUS_CODE.BAD_REQUEST,
-          "Invalid category"
+    return prisma.$transaction(async (tx) => {
+      try {
+        const { accessoryDetails, user } = newAccessoryProduct;
+        const { CategoryId, supplierId } = accessoryDetails;
+        console.log("Accessory Details:", accessoryDetails);
+        const category = parseInt(CategoryId, 10);
+        const categoryExist = await this.category.getCategoryById(category, tx);
+        if (!categoryExist) {
+          throw new APIError(
+            "Invalid category",
+            STATUS_CODE.BAD_REQUEST,
+            "Invalid category"
+          );
+        }
+        const shopFound = await this.shop.findShop({ name: "South B" }, tx);
+        if (!shopFound) {
+          throw new APIError(
+            "Shop not found",
+            STATUS_CODE.NOT_FOUND,
+            "Shop not found"
+          );
+        }
+        const shopId = shopFound.id;
+        const payload = {
+          ...accessoryDetails,
+          shopId,
+          user,
+          supplierId: parseInt(supplierId, 10),
+        };
+        const newProduct = await this.accessory.createAccessoryWithFinanceDetails(
+          payload,
+          tx
         );
+        return newProduct;
+      } catch (err) {
+        if (err instanceof APIError) {
+          throw err;
+        }
+        throw new APIError("Service Error", STATUS_CODE.INTERNAL_ERROR, err);
       }
-      const shopFound = await this.shop.findShop({ name: "Kahawa 2323" }); // Assuming a default shop
-      if (!shopFound) {
-        throw new APIError(
-          "Shop not found",
-          STATUS_CODE.NOT_FOUND,
-          "Shop not found"
-        );
-      }
-      const shopId = shopFound.id;
-      const payload = {
-        accessoryDetails,
-        financeDetails,
-        shopId,
-        user,
-        supplierId,
-      };
-      const newProduct = await this.accessory.createAccessoryWithFinanceDetails(
-        payload
-      );
-      return newProduct;
-    } catch (err) {
-      if (err instanceof APIError) {
-        throw err;
-      }
-      throw new APIError("Service Error", STATUS_CODE.INTERNAL_ERROR, err);
-    }
+    });
   }
 
   async findSpecificAccessoryProduct(id) {
