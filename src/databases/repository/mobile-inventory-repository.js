@@ -245,13 +245,10 @@ class phoneinventoryrepository {
   async updateConfirmedmobileItem(confirmedData) {
     try {
       const { status, userId, transferId, shopId, mobileId } = confirmedData;
-      const updatedTransfer = await prisma.mobileItems.update({
+      const updatedTransfer = await prisma.mobileItems.updateMany({
         where: {
-          mobileID_shopID_transferId: {
-            mobileID: mobileId,
-            shopID: shopId,
-            transferId: transferId,
-          },
+          mobileID: mobileId,
+          transferId: transferId,
         },
         data: {
           confirmedBy: userId,
