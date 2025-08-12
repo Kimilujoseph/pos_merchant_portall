@@ -73,12 +73,27 @@ const handleBulkSale = async (req, res, next) => {
   try {
     const { user } = req;
     const { ...salePayload } = req.body;
-    const result = await salesService.createBulkSale(salePayload, user);
-    handleResponse({
-      res,
-      message: "Bulk sale processed successfully",
-      data: result,
-    });
+    const results = await salesService.createBulkSale(salePayload, user);
+
+    const rejectedSales = results.filter(r => r.status === 'rejected');
+    const fulfilledSales = results.filter(r => r.status !== 'rejected');
+
+    if (rejectedSales.length > 0) {
+      // If some sales failed, return 400 Bad Request with details
+      return res.status(STATUS_CODE.BAD_REQUEST).json({
+        message: "Some sales could not be processed.",
+        error: true,
+        details: rejectedSales.map(r => r.reason),
+        successfulSales: fulfilledSales.map(r => r.value),
+      });
+    } else {
+      // All sales processed successfully
+      handleResponse({
+        res,
+        message: "Bulk sale processed successfully",
+        data: results.map(r => r.value),
+      });
+    }
   } catch (err) {
     next(err);
   }

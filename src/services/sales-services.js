@@ -62,25 +62,26 @@ class salesmanagment {
               paymentMethod: paymentmethod,
               status: 'completed',
               transactionId: transactionId,
+              updatedAt: new Date(),
             },
           });
 
           const successfulSales = [];
 
           for (const item of items) {
-            const { productId, soldprice, soldUnits, transferId, financeAmount, financeStatus, financeId } = item;
+            const { productId, soldprice, soldUnits, itemId, financeAmount, financeStatus, financeId } = item;
 
 
             const itemToSell = itemType === 'mobiles'
-              ? await tx.mobileItems.findUnique({ where: { id: parseInt(transferId) } })
-              : await tx.accessoryItems.findUnique({ where: { id: parseInt(transferId) } });
+              ? await tx.mobileItems.findUnique({ where: { id: parseInt(itemId) } })
+              : await tx.accessoryItems.findUnique({ where: { id: parseInt(itemId) } });
 
             if (!itemToSell) {
-              throw new APIError(`Item with Transfer ID ${transferId} not found.`, STATUS_CODE.NOT_FOUND);
+              throw new APIError(`Item not found.`, STATUS_CODE.NOT_FOUND);
             }
 
             if (itemToSell.status === 'sold') {
-              throw new APIError(`Item with Transfer ID ${transferId} has already been sold.`, STATUS_CODE.BAD_REQUEST);
+              throw new APIError(`Item  already been sold.`, STATUS_CODE.BAD_REQUEST);
             }
 
 

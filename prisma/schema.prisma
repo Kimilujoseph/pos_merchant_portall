@@ -106,7 +106,7 @@ model Payment {
   status         String           @default("completed")
   transactionId  String?
   createdAt      DateTime         @default(now())
-  updatedAt      DateTime
+  updatedAt      DateTime?        @default(now()) @db.DateTime(0)
   accessorysales accessorysales[]
   mobilesales    mobilesales[]
 }
