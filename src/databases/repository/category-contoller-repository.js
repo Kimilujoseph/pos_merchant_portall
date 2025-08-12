@@ -206,9 +206,9 @@ class CategoryManagementRepository {
       );
     }
   }
-  async getCategoryById(categoryId) {
+  async getCategoryById(categoryId, tx) {
     try {
-      const category = await prisma.categories.findUnique({
+      const category = await (tx || prisma).categories.findUnique({
         where: {
           id: categoryId,
         },

@@ -6,6 +6,7 @@ const handleBulkDistibution = async (req, res) => {
   try {
     const user = req.user;
     const { bulkDistribution, shopDetails, category } = req.body;
+
     if (!["manager", "superuser"].includes(user.role)) {
       throw new APIError(
         "unauthorised",
@@ -21,82 +22,31 @@ const handleBulkDistibution = async (req, res) => {
       );
     }
 
-    const mainShop = shopDetails.mainShop;
-    const distributedShop = shopDetails.distributedShop;
-    const userId = parseInt(user.id, 10);
-    const processDistribution = (distributions, distributionMethod) => {
-      return distributions.map((distribution) => {
-        const distributionData = {
-          ...distribution,
-          mainShop: mainShop,
-          distributedShop: distributedShop,
-          userId: userId,
-        };
-        return distributionMethod.call(distributionManager, distributionData);
-      });
-    };
-    let productDistribution;
-    let processProductDistribution;
     if (category === "mobiles") {
-      productDistribution = bulkDistribution.filter(
-        (item) => item.stockId !== null
-      );
-      processProductDistribution =
-        productDistribution.length > 0
-          ? processDistribution(
-              productDistribution,
-              distributionManager.createnewMobileDistribution
-            )
-          : [];
-    } else {
-      productDistribution = bulkDistribution.filter(
-        (item) => item.stockId !== null
-      );
-      console.log("wwe", productDistribution);
-      processProductDistribution =
-        productDistribution.length > 0
-          ? processDistribution(
-              productDistribution,
-              distributionManager.createnewAccessoryDistribution
-            )
-          : [];
-    }
-    const allPromises = [...processProductDistribution];
-
-    if (allPromises.length > 0) {
-      const results = await Promise.allSettled(allPromises);
-
-      const successfulDistributions = results.filter(
-        (result) => result.status === "fulfilled"
-      );
-      const failedDistributions = results.filter(
-        (result) => result.status === "rejected"
-      );
-      if (failedDistributions.length > 0) {
-        console.error("Some distributions failed:", failedDistributions);
-      }
+      const successfulDistributions = await distributionManager.createBulkMobileDistribution({
+        bulkDistribution,
+        mainShop: shopDetails.mainShop,
+        distributedShop: shopDetails.distributedShop,
+        userId: parseInt(user.id, 10),
+      });
 
       return res.status(200).json({
-        message: "Distribution process completed",
+        message: "Distribution process completed successfully.",
         successfulDistributions: successfulDistributions.length,
-        failedDistributions: failedDistributions.length,
-        error: failedDistributions.length > 0,
-        details: failedDistributions.map((failure) => ({
-          reason: failure.reason.message || "Unknown error",
-        })),
+        error: false,
       });
+
     } else {
-      throw new APIError(
-        "No distribution made",
-        STATUS_CODE.BAD_REQUEST,
-        "No distribution made"
-      );
+      // This part remains non-transactional for now
+      // You can implement a similar transactional method for accessories later
+      throw new APIError("Not Implemented", STATUS_CODE.NOT_IMPLEMENTED, "Accessory distribution is not yet transactional.");
     }
   } catch (err) {
-    if (err instanceof APIError) {
-      res.status(err.statusCode).json({ error: true, message: err.message });
-    }
-    res.status(err.statusCode).json({ error: true, message: err.message });
+    // If the transaction fails for ANY reason, this catch block will be executed
+    console.error("Distribution failed and was rolled back:", err);
+    const statusCode = err instanceof APIError ? err.statusCode : 500;
+    const message = err.message || "An unexpected error occurred during the distribution process.";
+    res.status(statusCode).json({ error: true, message: message });
   }
 };
 

@@ -7,6 +7,7 @@ import { Sales } from "../databases/repository/sales-repository.js";
 import { CategoryManagementRepository } from "../databases/repository/category-contoller-repository.js";
 import { APIError, STATUS_CODE } from "../Utils/app-error.js";
 import { validateUpdateInputs } from "../helpers/updateValidationHelper.js";
+import prisma from "../databases/client.js";
 
 const __dirname = path.resolve(path.dirname(''));
 
@@ -17,48 +18,45 @@ class MobilemanagementService {
     this.category = new CategoryManagementRepository();
     this.sales = new Sales();
   }
-  //get product profile
+
   async createnewPhoneproduct(newphoneproduct) {
-    try {
-      const { phoneDetails, user, availableStock, supplierId, paymentStatus } =
-        newphoneproduct;
-      const { CategoryId } = phoneDetails;
+    const { phoneDetails, user, supplierId, paymentStatus } = newphoneproduct;
+    const { CategoryId } = phoneDetails;
+
+
+    return prisma.$transaction(async (tx) => {
       const category = parseInt(CategoryId, 10);
-      const categoryExist = await this.category.getCategoryById(category);
+      const categoryExist = await this.category.getCategoryById(category, tx);
       if (!categoryExist) {
-        throw new APIError(
-          "Invalid category",
-          STATUS_CODE.BAD_REQUEST,
-          "Invalid category"
-        );
+        throw new APIError("Invalid category", STATUS_CODE.BAD_REQUEST, "The specified category does not exist.");
       }
-      const shopFound = await this.shop.findShop({ name: "South B" });
+
+      const shopFound = await this.shop.findShop({ name: "South B" }, tx);
       if (!shopFound) {
-        throw new APIError(
-          "Shop not found",
-          STATUS_CODE.NOT_FOUND,
-          "Shop not found"
-        );
+        throw new APIError("Shop not found", STATUS_CODE.NOT_FOUND, "The default shop 'South B' was not found.");
       }
       const shopId = shopFound.id;
-      const payload = {
-        phoneDetails,
-        shopId,
-        user,
+
+
+      const newProduct = await this.mobile.createphoneStock({
+        ...phoneDetails,
         supplierId,
         paymentStatus,
-      };
-      const newProduct = await this.mobile.createPhonewithFinaceDetails(
-        payload
-      );
-      return newProduct;
-    } catch (err) {
-      // console.log(err);
-      if (err instanceof APIError) {
-        throw err;
+      }, tx);
+
+      if (!newProduct) {
+        throw new APIError("Product creation failed", STATUS_CODE.INTERNAL_ERROR, "Failed to create the new phone stock.");
       }
-      throw new APIError("Service error", STATUS_CODE.INTERNAL_ERROR, err);
-    }
+      await this.mobile.createHistory({
+        productId: newProduct.id,
+        user,
+        shopId,
+        type: "new stock",
+      }, tx);
+
+      return newProduct;
+    });
+
   }
 
   async generateBatchNumber(categoryId) {
@@ -230,6 +228,7 @@ class MobilemanagementService {
         transferId: transferID,
         userId: userId,
         status: "confirmed",
+        mobileId: stockId,
       };
       const updateMobileItemResult = await this.mobile.updateConfirmedmobileItem(confirmedData);
       const updateTransferHistoryResult = await this.mobile.updatetransferHistory(distributionData);

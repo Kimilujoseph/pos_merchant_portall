@@ -1,13 +1,15 @@
-// databases/repository/invetory-controller-repository.js
-import { PrismaClient } from "@prisma/client";
+import prisma from "../client.js";
 import { APIError, STATUS_CODE } from "../../Utils/app-error.js";
-const prisma = new PrismaClient();
 
 class ShopmanagementRepository {
+  constructor() {
+    this.prisma = prisma;
+  }
+
   async createShop({ name, address }) {
     try {
       console.log("name", name);
-      const shop = await prisma.shops.create({
+      const shop = await this.prisma.shops.create({
         data: {
           shopName: name,
           address: address,
@@ -23,9 +25,10 @@ class ShopmanagementRepository {
       );
     }
   }
+
   async findShopById(id) {
     try {
-      const shopFound = await prisma.shops.findUnique({
+      const shopFound = await this.prisma.shops.findUnique({
         where: {
           id: id,
         },
@@ -52,9 +55,11 @@ class ShopmanagementRepository {
       );
     }
   }
-  async findShop({ name }) {
+
+  async findShop({ name }, tx) {
+    const prismaClient = tx || this.prisma;
     try {
-      const findShop = await prisma.shops.findFirst({
+      const findShop = await prismaClient.shops.findFirst({
         where: {
           shopName: name,
         },
@@ -79,7 +84,17 @@ class ShopmanagementRepository {
             },
           },
           mobileItems: {
-            include: {
+            select: {
+              id: true,
+              mobileID: true,
+              shopID: true,
+              status: true,
+              confirmedBy: true,
+              transferId: true,
+              createdAt: true,
+              productStatus: true,
+              quantity: true,
+              updatedAt: true,
               mobiles: {
                 select: {
                   categories: true,
@@ -94,7 +109,17 @@ class ShopmanagementRepository {
             },
           },
           accessoryItems: {
-            include: {
+            select: {
+              id: true,
+              accessoryID: true,
+              shopID: true,
+              status: true,
+              createdAt: true,
+              quantity: true,
+              productStatus: true,
+              updatedAt: true,
+              transferId: true,
+              confirmedBy: true,
               accessories: {
                 select: {
                   categories: true,
@@ -121,9 +146,10 @@ class ShopmanagementRepository {
       );
     }
   }
+
   async findShopsAvailable() {
     try {
-      const findShop = await prisma.shops.findMany({
+      const findShop = await this.prisma.shops.findMany({
         select: {
           id: true,
           shopName: true,
@@ -146,8 +172,7 @@ class ShopmanagementRepository {
 
   async findSpecificShopItem({ name, requestedItem, page = 1, limit = 10 }) {
     try {
-      // Step 1: Find the shop by name
-      const shop = await prisma.shops.findFirst({
+      const shop = await this.prisma.shops.findFirst({
         where: { shopName: name },
         select: { id: true, shopName: true },
       });
@@ -161,7 +186,7 @@ class ShopmanagementRepository {
       }
       let items = [];
       if (requestedItem === "phoneItems") {
-        items = await prisma.mobileItems.findMany({
+        items = await this.prisma.mobileItems.findMany({
           where: {
             shopID: shop.id,
             status: "confirmed",
@@ -179,7 +204,7 @@ class ShopmanagementRepository {
           },
         });
       } else if (requestedItem === "stockItems") {
-        items = await prisma.accessoryItems.findMany({
+        items = await this.prisma.accessoryItems.findMany({
           where: {
             shopID: shop.id,
             status: "confirmed",
@@ -228,9 +253,9 @@ class ShopmanagementRepository {
       );
     }
   }
+  
   async updateShopDetails(shopID, shopDetails) {
     try {
-      //FINDTHESHOP
       const shop = await this.findShopById(shopID);
       if (!shop) {
         throw new APIError(
@@ -239,7 +264,7 @@ class ShopmanagementRepository {
           "Shop not found"
         );
       }
-      const updatedShop = await prisma.shops.update({
+      const updatedShop = await this.prisma.shops.update({
         where: { id: shopID },
         data: shopDetails,
       });
@@ -260,16 +285,16 @@ class ShopmanagementRepository {
   async updateSalesOfAccessory(shopId, transferId, soldUnits) {
     console.log("@@#soldunits", soldUnits);
     try {
-      const accessoryItemUpdate = await prisma.accessoryItems.updateMany({
+      const accessoryItemUpdate = await this.prisma.accessoryItems.updateMany({
         where: {
           shopID: shopId,
-          transferId: transferId
+          transferId: transferId,
         },
         data: {
           quantity: {
-            decrement: soldUnits
-          }
-        }
+            increment: soldUnits,
+          },
+        },
       });
       return accessoryItemUpdate;
     } catch (err) {
@@ -284,9 +309,10 @@ class ShopmanagementRepository {
       );
     }
   }
+
   async updateSalesOfPhone(shopId, productID, soldUnits) {
     try {
-      const mobileItem = await prisma.mobileItems.findFirst({
+      const mobileItem = await this.prisma.mobileItems.findFirst({
         where: {
           shopID: shopId,
           mobileID: productID,
@@ -301,7 +327,7 @@ class ShopmanagementRepository {
         );
       }
 
-      const updateSalesOfPhone = await prisma.mobileItems.update({
+      const updateSalesOfPhone = await this.prisma.mobileItems.update({
         where: {
           id: mobileItem.id,
         },
@@ -332,8 +358,7 @@ class ShopmanagementRepository {
     console.log("#@#", shopName);
 
     try {
-      // Step 1: Find the shop by name
-      const shop = await prisma.shops.findFirst({
+      const shop = await this.prisma.shops.findFirst({
         where: { shopName: shopName },
         select: { id: true },
       });
@@ -342,11 +367,9 @@ class ShopmanagementRepository {
         throw new APIError(`Shop with name ${shopName} not found`);
       }
 
-      // Convert productName to lowercase for case-insensitive search
       const searchTerm = productName.toLowerCase();
 
-      // Step 2: Search for products in phoneItems (mobileItems)
-      const phoneItems = await prisma.mobileItems.findMany({
+      const phoneItems = await this.prisma.mobileItems.findMany({
         where: {
           shopID: shop.id,
           mobiles: {
@@ -378,10 +401,7 @@ class ShopmanagementRepository {
         },
       });
 
-      //console.log("Phone Items:", JSON.stringify(phoneItems, null, 2));
-
-      // Step 3: Search for products by IMEI or serialNumber in mobileItems
-      const matchingImei = await prisma.mobileItems.findMany({
+      const matchingImei = await this.prisma.mobileItems.findMany({
         where: {
           shopID: shop.id,
           mobiles: {
@@ -407,8 +427,7 @@ class ShopmanagementRepository {
         },
       });
 
-      // Step 4: Search for products in stockItems (accessoryItems)
-      const stockItems = await prisma.accessoryItems.findMany({
+      const stockItems = await this.prisma.accessoryItems.findMany({
         where: {
           shopID: shop.id,
           accessories: {
@@ -458,10 +477,11 @@ class ShopmanagementRepository {
       );
     }
   }
-  async newAddedphoneItem(newItem) {
+  
+  async newAddedphoneItem(newItem, tx) {
+    const prismaClient = tx || this.prisma;
     try {
-      console.log("newitemOadd", newItem);
-      const updatedShop = await prisma.mobileItems.create({
+      const updatedShop = await prismaClient.mobileItems.create({
         data: {
           status: newItem.status,
           productStatus: newItem.productStatus,
@@ -485,10 +505,10 @@ class ShopmanagementRepository {
       );
     }
   }
-  //might  delete later
+
   async updateConfirmationOfProduct(shopId, newPhoneItemId, userName) {
     try {
-      const updatedNewPhoneItem = await prisma.mobileItems.update({
+      const updatedNewPhoneItem = await this.prisma.mobileItems.update({
         where: {
           id: newPhoneItemId,
         },
@@ -508,9 +528,10 @@ class ShopmanagementRepository {
       );
     }
   }
+
   async addNewAccessory(shopId, newItem) {
     try {
-      const newAccessoryItem = await prisma.accessoryItems.create({
+      const newAccessoryItem = await this.prisma.accessoryItems.create({
         data: {
           accessoryID: newItem.productID,
           quantity: newItem.quantity,
@@ -519,7 +540,6 @@ class ShopmanagementRepository {
           transferId: newItem.transferId,
           productStatus: newItem.productStatus || "new stock",
           confirmedBy: null,
-          quantity: newItem.quantity || 1,
           createdAt: new Date(),
         },
       });
@@ -535,12 +555,20 @@ class ShopmanagementRepository {
     }
   }
 
-  async updateConfirmationOfAccessory(shopId, transferproductId, userId) {
+  async updateConfirmationOfAccessory(
+    shopId,
+    transferproductId,
+    userId,
+    accessoryId
+  ) {
     try {
-      const updatedNewAccessoryItem = await prisma.accessoryItems.updateMany({
+      const updatedNewAccessoryItem = await this.prisma.accessoryItems.update({
         where: {
-          shopID: shopId,
-          transferId: transferproductId,
+          accessoryID_shopID_transferId: {
+            accessoryID: accessoryId,
+            shopID: shopId,
+            transferId: transferproductId,
+          },
         },
         data: {
           status: "confirmed",
@@ -561,7 +589,7 @@ class ShopmanagementRepository {
 
   async updateAccessoryQuantity(shopId, accessoryId, quantity) {
     try {
-      const updatedNewAccessoryItem = await prisma.accessoryItems.updateMany({
+      const updatedNewAccessoryItem = await this.prisma.accessoryItems.updateMany({
         where: {
           shopID: shopId,
           accessoryID: accessoryId,

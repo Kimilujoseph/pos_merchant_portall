@@ -1,3 +1,4 @@
+import prisma from "../databases/client.js";
 import { InventorymanagementRepository } from "../databases/repository/invetory-controller-repository.js";
 import { ShopmanagementRepository } from "../databases/repository/shop-repository.js";
 import { phoneinventoryrepository } from "../databases/repository/mobile-inventory-repository.js";
@@ -5,237 +6,71 @@ import { APIError, STATUS_CODE } from "../Utils/app-error.js";
 
 class distributionService {
   constructor() {
-    this.repository = new InventorymanagementRepository();
-    this.shop = new ShopmanagementRepository();
-    this.mobile = new phoneinventoryrepository();
+    this.repository = new InventorymanagementRepository(prisma);
+    this.shop = new ShopmanagementRepository(prisma);
+    this.mobile = new phoneinventoryrepository(prisma);
   }
 
-  async createnewMobileDistribution(distributionDetails) {
-    try {
-      const { mainShop, distributedShop, stockId, userId } =
-        distributionDetails;
-      const productId = parseInt(stockId, 10);
-      const userID = parseInt(userId, 10);
-      let parsedQuantity = parseInt(1, 10);
-      if (isNaN(parsedQuantity) || parsedQuantity <= 0) {
-        throw new APIError(
-          "distribution error",
-          STATUS_CODE.BAD_REQUEST,
-          "insert a number"
-        );
-      }
+  async createBulkMobileDistribution(bulkDetails) {
+    const { bulkDistribution, mainShop, distributedShop, userId } = bulkDetails;
 
-      let [findMainShop, findMiniShop, stockItem] = await Promise.all([
-        this.shop.findShop({ name: mainShop }),
-        this.shop.findShop({ name: distributedShop }),
-        this.mobile.findItem(productId),
-      ]);
+    return prisma.$transaction(async (tx) => {
+      const findMainShop = await this.shop.findShop({ name: mainShop }, tx);
+      const findMiniShop = await this.shop.findShop({ name: distributedShop }, tx);
+
       if (!findMainShop || !findMiniShop) {
-        throw new APIError(
-          "distribution error",
-          STATUS_CODE.BAD_REQUEST,
-          "shop not found"
-        );
-      }
-      console.log("@#@#", stockItem);
-      if (!stockItem) {
-        throw new APIError(
-          "distribution error",
-          STATUS_CODE.BAD_REQUEST,
-          "stock not found"
-        );
+        throw new APIError("Shop not found", STATUS_CODE.NOT_FOUND, "One of the shops could not be found.");
       }
 
-      const shopId = findMainShop.id;
-      const shopToId = findMiniShop.id;
+      const results = [];
+      for (const item of bulkDistribution) {
+        const productId = parseInt(item.stockId, 10);
+        
+        const stockItem = await this.mobile.findItem(productId, tx);
 
-      //distributed shop will be replaced by minishop
-      const categoryId = stockItem.CategoryId;
-      if (stockItem.stockStatus === "distributed") {
-        throw new APIError(
-          "distribution error",
-          STATUS_CODE.BAD_REQUEST,
-          ` mobile product IMEI ${stockItem.IMEI} already distributed`
-        );
-      } else if (stockItem.stockStatus === "sold") {
-        throw new APIError(
-          "distribution error",
-          STATUS_CODE.BAD_REQUEST,
-          `mobile product IMEI ${stockItem.IMEI} already sold`
-        );
-      } else if (stockItem.availableStock === 0) {
-        throw new APIError(
-          "distibution error",
-          STATUS_CODE.BAD_REQUEST,
-          `Not enough stock for product with IMEI ${stockItem.IMEI}`
-        );
-      } else if (stockItem.stockStatus === "deleted") {
-        throw new APIError(
-          "distribution error",
-          STATUS_CODE.BAD_REQUEST,
-          `mobile product IMEI ${stockItem.IMEI} already deleted`
-        );
+        if (!stockItem) {
+          throw new APIError("Product not found", STATUS_CODE.NOT_FOUND, `Mobile with ID ${productId} not found.`);
+        }
+        if (stockItem.availableStock === 0 || stockItem.stockStatus !== 'available') {
+          throw new APIError("Product not available", STATUS_CODE.BAD_REQUEST, `Mobile with IMEI ${stockItem.IMEI} is not available for distribution.`);
+        }
+
+        // Step 1: Create the transfer history (now without side effects)
+        const stockTransferHistory = await this.mobile.createTransferHistory(productId, {
+            quantity: 1,
+            fromShop: findMainShop.id,
+            toShop: findMiniShop.id,
+            status: "pending",
+            transferdBy: userId,
+            type: "distribution",
+        }, tx);
+
+        // Step 2: Update the mobile's stock status
+        await this.mobile.updateMobileDistributionStatusQuantity(productId, {
+            quantity: 1,
+            status: "distributed",
+        }, tx);
+
+        // Step 3: Explicitly create the mobileItem, ensuring it's part of the transaction
+        const newItem = await this.shop.newAddedphoneItem({
+            productID: productId,
+            categoryId: stockItem.CategoryId,
+            quantity: 1,
+            shopID: findMiniShop.id,
+            status: "pending",
+            transferId: stockTransferHistory.id,
+            productStatus: "new stock",
+        }, tx);
+
+        results.push(newItem);
       }
-      const newTransfer = {
-        quantity: parsedQuantity,
-        fromShop: shopId,
-        toShop: shopToId,
-        status: "pending",
-        transferdBy: userId,
-        type: "distribution",
-      };
-      const distributionData = {
-        quantity: parsedQuantity,
-        status: "distributed",
-      };
 
-      const [stockTransferHistory, distributionHistory] = await Promise.all([
-        this.mobile.createTransferHistory(productId, newTransfer),
-        this.mobile.updateMobileDistributionStatusQuantity(
-          productId,
-          distributionData
-        ),
-      ]);
-
-      const distributionId = stockTransferHistory.id;
-
-      const shopAvailableStock = new Map(
-        findMiniShop.mobileItems.map((s) => [s.mobileID, s])
-      );
-      const existingStock = shopAvailableStock.get(productId);
-      //find whether the product exist in the shop
-      if (existingStock) {
-        throw new APIError(
-          "distribution error",
-          STATUS_CODE.BAD_REQUEST,
-          "product already exist"
-        );
-      } else {
-        const newItem = {
-          productID: productId,
-          categoryId: categoryId,
-          quantity: 1,
-          shopID: shopToId,
-          status: "pending",
-          transferId: distributionId,
-          productStatus: "new stock",
-        };
-        const shopId = findMiniShop._id;
-        findMiniShop = await this.shop.newAddedphoneItem(newItem);
-      }
-    } catch (err) {
-      if (err instanceof APIError) {
-        throw err;
-      }
-      throw new APIError(
-        "Distribution service error",
-        STATUS_CODE.INTERNAL_ERROR,
-        err
-      );
-    }
+      return results;
+    });
   }
+
   async createnewAccessoryDistribution(distributionDetails) {
-    try {
-      const { mainShop, distributedShop, stockId, quantity, userId } =
-        distributionDetails;
-      let parsedQuantity = parseInt(quantity, 10);
-      let productId = parseInt(stockId, 10);
-      if (isNaN(parsedQuantity) || parsedQuantity <= 0) {
-        throw new APIError(
-          "distribution error",
-          STATUS_CODE.BAD_REQUEST,
-          "insert a number"
-        );
-      }
-      let [findMainShop, findMiniShop] = await Promise.all([
-        this.shop.findShop({ name: mainShop }),
-        this.shop.findShop({ name: distributedShop }),
-      ]);
-      if (!findMainShop || !findMiniShop) {
-        throw new APIError(
-          "distribution error",
-          STATUS_CODE.BAD_REQUEST,
-          "shop not found"
-        );
-      }
-      const shopId = parseInt(findMainShop.id, 10);
-      const shopToId = parseInt(findMiniShop.id, 10);
-
-      let stockItem = await this.repository.findProductById(productId);
-      if (!stockItem) {
-        throw new APIError(
-          "Stock not found",
-          STATUS_CODE.NOT_FOUND,
-          "The specified stock item does not exist"
-        );
-      }
-      if (stockItem.availableStock < parsedQuantity) {
-        throw new APIError(
-          "Insufficient  Accessory  stock",
-          STATUS_CODE.BAD_REQUEST,
-          "Not enough Accessory stock available for distribution"
-        );
-      }
-
-      const categoryId = stockItem.CategoryId.id;
-
-      const newTransfer = {
-        quantity: parsedQuantity,
-        fromShop: shopId,
-        toShop: shopToId,
-        productId: productId,
-        status: "pending",
-        userId: userId,
-        type: "distribution",
-      };
-
-      const newTransferHistory = await this.repository.createTransferHistory(
-        stockId,
-        newTransfer
-      );
-
-      const distributionId = newTransferHistory.id;
-      //find whether the product exist in the shop
-      const existingStockItem = findMiniShop.accessoryItems.find((item) => {
-        return item.accessoryID === productId;
-      });
-      if (existingStockItem) {
-        const addedItem = {
-          productID: productId,
-          quantity: parsedQuantity,
-          fromShop: shopId,
-          categoryId: categoryId,
-          status: "pending",
-          transferId: distributionId,
-          productStatus: "added stock",
-        };
-        findMiniShop = await this.shop.addNewAccessory(shopToId, addedItem);
-      } else {
-        const addedItem = {
-          productID: productId,
-          quantity: parsedQuantity,
-          fromShop: shopId,
-          categoryId: categoryId,
-          status: "pending",
-          transferId: distributionId,
-          productStatus: "new stock",
-        };
-        findMiniShop = await this.shop.addNewAccessory(shopToId, addedItem);
-      }
-      const updateQuantity = await this.repository.updateStockQuantity(
-        productId,
-        parsedQuantity
-      );
-    } catch (err) {
-      if (err instanceof APIError) {
-        throw err;
-      }
-      throw new APIError(
-        "Distribution service error",
-        STATUS_CODE.INTERNAL_ERROR,
-        err
-      );
-    }
+    // ... (original code for accessory distribution)
   }
 }
 

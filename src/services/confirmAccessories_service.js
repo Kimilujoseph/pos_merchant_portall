@@ -49,9 +49,19 @@ class ConfirmAccessorymanagementService {
       ]);
 
       this.validationProcess(accessoryProduct, shopFound, parsedUserId);
-      this.findTheAccessory(shopFound, parsedTransferId, parsedQuantity);
+      const newAccessory = this.findTheAccessory(
+        shopFound,
+        parsedTransferId,
+        parsedQuantity
+      );
       const shopId = parseInt(shopFound.id);
-      await this.transferProcess(parsedTransferId, parsedUserId, shopId);
+      const accessoryId = newAccessory.accessoryID;
+      await this.transferProcess(
+        parsedTransferId,
+        parsedUserId,
+        shopId,
+        accessoryId
+      );
     } catch (err) {
       if (err instanceof APIError) {
         throw err;
@@ -121,7 +131,7 @@ class ConfirmAccessorymanagementService {
     return newAccessory;
   }
 
-  async transferProcess(parsedTransferId, parsedUserId, shopId) {
+  async transferProcess(parsedTransferId, parsedUserId, shopId, accessoryId) {
     const updates = {
       status: "confirmed",
       confirmedBy: parsedUserId,
@@ -135,7 +145,8 @@ class ConfirmAccessorymanagementService {
       this.repository.shop.updateConfirmationOfAccessory(
         shopId,
         parsedTransferId,
-        parsedUserId
+        parsedUserId,
+        accessoryId
       ),
     ]);
   }

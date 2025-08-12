@@ -72,8 +72,8 @@ const handleGetSales = async (req, res, next) => {
 const handleBulkSale = async (req, res, next) => {
   try {
     const { user } = req;
-    const { financerId, ...salePayload } = req.body;
-    const result = await salesService.createBulkSale(salePayload, user, financerId);
+    const { ...salePayload } = req.body;
+    const result = await salesService.createBulkSale(salePayload, user);
     handleResponse({
       res,
       message: "Bulk sale processed successfully",

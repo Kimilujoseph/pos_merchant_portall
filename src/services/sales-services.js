@@ -1,3 +1,4 @@
+import { PrismaClient } from "@prisma/client";
 import { Sales } from "../databases/repository/sales-repository.js";
 import { InventorymanagementRepository } from "../databases/repository/invetory-controller-repository.js";
 import { usermanagemenRepository } from "../databases/repository/usermanagement-controller-repository.js";
@@ -8,6 +9,8 @@ import { analyseSalesMetric } from "../helpers/analyticmetric.js";
 import { transformSales } from "../helpers/transformsales.js";
 import { APIError, STATUS_CODE } from "../Utils/app-error.js";
 import CustomerRepository from "../databases/repository/customer-repository.js";
+
+const prisma = new PrismaClient();
 
 class salesmanagment {
   constructor() {
@@ -20,84 +23,122 @@ class salesmanagment {
     this.customer = CustomerRepository;
   }
 
-  async createBulkSale(salePayload, user, financerId) {
-    const { shopName, customerdetails, bulksales, salesStatus, paymentMethod, transactionId } = salePayload;
+  async createBulkSale(salePayload, user) {
+    const { shopName, customerdetails, bulksales } = salePayload;
     const { id: sellerId } = user;
 
     const shop = await this.shop.findShop({ shopName });
     if (!shop) {
       throw new APIError("Shop not found", STATUS_CODE.NOT_FOUND, "The specified shop does not exist.");
     }
+    // if (!shop.assignment.find(seller => seller.actors.id === sellerId)) {
+    //   throw new APIError("unathorzed", STATUS_CODE.UNAUTHORIZED, "not authorised to make sales for this shop")
+    // }
 
-    let customer = await this.customer.findCustomerByPhone(customerdetails.phoneNumber);
+    let customer = await this.customer.findCustomerByPhone(customerdetails.phonenumber);
     if (!customer) {
-      customer = await this.customer.createCustomer(customerdetails);
+      // Ensure email is passed correctly if it exists
+      const customerData = {
+        name: customerdetails.name,
+        phoneNumber: customerdetails.phonenumber,
+        email: customerdetails.email,
+        address: customerdetails.address,
+      };
+      customer = await this.customer.createCustomer(customerData);
     }
 
-    const successfulSales = [];
-    let totalAmount = 0;
-    const salesToCreate = [];
+    const allSalesResults = [];
 
     for (const sale of bulksales) {
-      const { itemType, items } = sale;
-      for (const item of items) {
-        const { productId, soldprice, soldUnits } = item;
-        totalAmount += soldprice * soldUnits;
+      const { itemType, items, paymentmethod, transactionId, CategoryId } = sale;
 
-        const productDetails = itemType === 'mobiles'
-          ? await this.mobile.findMobileById(productId)
-          : await this.inventory.findAccessoryById(productId);
+      const totalAmount = items.reduce((acc, item) => acc + (item.soldprice * item.soldUnits), 0);
 
-        if (!productDetails) {
-          throw new APIError(`Product with ID ${productId} not found`, STATUS_CODE.NOT_FOUND);
-        }
+      try {
+        const result = await prisma.$transaction(async (tx) => {
+          const payment = await tx.payment.create({
+            data: {
+              amount: totalAmount,
+              paymentMethod: paymentmethod,
+              status: 'completed',
+              transactionId: transactionId,
+            },
+          });
 
-        const profit = (soldprice - productDetails.productCost) * soldUnits;
-        const commission = productDetails.commission * soldUnits;
+          const successfulSales = [];
 
-        salesToCreate.push({
-          itemType,
-          saleData: {
-            productID: productId,
-            shopID: shop.id,
-            sellerId,
-            soldPrice: soldprice,
-            quantity: soldUnits,
-            customerId: customer.id,
-            profit,
-            commission,
-          },
+          for (const item of items) {
+            const { productId, soldprice, soldUnits, transferId, financeAmount, financeStatus, financeId } = item;
+
+
+            const itemToSell = itemType === 'mobiles'
+              ? await tx.mobileItems.findUnique({ where: { id: parseInt(transferId) } })
+              : await tx.accessoryItems.findUnique({ where: { id: parseInt(transferId) } });
+
+            if (!itemToSell) {
+              throw new APIError(`Item with Transfer ID ${transferId} not found.`, STATUS_CODE.NOT_FOUND);
+            }
+
+            if (itemToSell.status === 'sold') {
+              throw new APIError(`Item with Transfer ID ${transferId} has already been sold.`, STATUS_CODE.BAD_REQUEST);
+            }
+
+
+            const productDetails = itemType === 'mobiles'
+              ? await tx.mobiles.findUnique({ where: { id: parseInt(productId) } })
+              : await tx.accessories.findUnique({ where: { id: parseInt(productId) } });
+
+            if (!productDetails) {
+              throw new APIError(`Product with ID ${productId} not found`, STATUS_CODE.NOT_FOUND);
+            }
+
+            const profit = (soldprice - productDetails.productCost) * soldUnits;
+            const commission = productDetails.commission * soldUnits;
+
+            const saleData = {
+              productID: parseInt(productId),
+              shopID: shop.id,
+              sellerId,
+              soldPrice: soldprice,
+              quantity: soldUnits,
+              customerId: customer.id,
+              paymentId: payment.id,
+              categoryId: parseInt(CategoryId),
+              profit,
+              commission,
+              financeAmount: financeAmount ? parseInt(financeAmount) : 0,
+              financeStatus: financeStatus,
+              financerId: financeId ? parseInt(financeId) : null,
+            };
+
+            let createdSale;
+            if (itemType === 'mobiles') {
+              createdSale = await tx.mobilesales.create({ data: saleData });
+              await tx.mobileItems.update({
+                where: { id: parseInt(transferId) },
+                data: { status: 'sold' },
+              });
+            } else {
+              createdSale = await tx.accessorysales.create({ data: saleData });
+              await tx.accessoryItems.update({
+                where: { id: parseInt(transferId) },
+                data: { status: 'sold', quantity: { increment: soldUnits } },
+              });
+            }
+            successfulSales.push({ status: 'fulfilled', value: createdSale });
+          }
+
+          return { successfulSales, customer, payment };
         });
+        allSalesResults.push(result);
+
+      } catch (err) {
+        console.error(err);
+        // Push a structured error to the results array
+        allSalesResults.push({ status: 'rejected', reason: err.message });
       }
     }
-
-    const payment = await this.sales.createPayment({
-      amount: totalAmount,
-      paymentMethod: paymentMethod,
-      status: salesStatus,
-      financerId: financerId,
-      transactionId: transactionId || null,
-    });
-
-    for (const sale of salesToCreate) {
-      const { itemType, saleData } = sale;
-      saleData.paymentId = payment.id;
-
-      let createdSale;
-      if (itemType === 'mobiles') {
-        createdSale = await this.sales.createnewMobilesales(saleData);
-      } else if (itemType === 'accessories') {
-        createdSale = await this.sales.createnewAccessoriesales(saleData);
-      }
-
-      if (createdSale) {
-        successfulSales.push({ status: 'fulfilled', value: createdSale });
-      } else {
-        successfulSales.push({ status: 'rejected', reason: 'Sale creation failed' });
-      }
-    }
-
-    return { successfulSales, customer, payment };
+    return allSalesResults;
   }
 
   async generategeneralsales({ startDate, endDate, page, limit }) {

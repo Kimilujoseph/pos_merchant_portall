@@ -530,6 +530,26 @@ class InventorymanagementRepository {
       throw new APIError("Database Error", 500);
     }
   }
+
+  async updateAccessoryItemStatusByTransferId(transferId, status) {
+    try {
+      return await prisma.accessoryItems.update({
+        where: {
+          id: transferId,
+        },
+        data: {
+          status: status,
+          updatedAt: new Date(),
+        },
+      });
+    } catch (err) {
+      throw new APIError(
+        "Database Error",
+        STATUS_CODE.INTERNAL_ERROR,
+        "Failed to update accessory item status"
+      );
+    }
+  }
 }
 
 export { InventorymanagementRepository };
