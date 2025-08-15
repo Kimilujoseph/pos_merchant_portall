@@ -81,14 +81,25 @@ class Sales {
       );
     }
   }
-  async findSales({ salesTable, startDate, endDate, page, limit }) {
+  async findSales({ salesTable, startDate, endDate, page, limit, shopId, categoryId, financeStatus }) {
     try {
       const salesModel = prisma[salesTable];
-      //const skip = (page - 1) * limit;
+      const skip = (page - 1) * limit;
       const whereClause = {
         createdAt: { gte: startDate, lte: endDate },
       };
 
+      if (shopId) {
+        whereClause.shopID = shopId;
+      }
+
+      if (categoryId) {
+        whereClause.categoryId = categoryId;
+      }
+
+      if (financeStatus) {
+        whereClause.financeStatus = financeStatus;
+      }
 
       const includeClause =
         salesTable === "mobilesales"
@@ -109,6 +120,8 @@ class Sales {
           where: whereClause,
           include: includeClause,
           orderBy: { createdAt: "desc" },
+          skip: skip,
+          take: limit,
         }),
         salesModel.aggregate({
           where: whereClause,
@@ -116,6 +129,7 @@ class Sales {
             soldPrice: true,
             profit: true,
             commission: true,
+            financeAmount: true,
           },
           _count: true,
         }),
@@ -133,9 +147,10 @@ class Sales {
         data: results.map(transformSale),
         totals: {
           totalSales: Number(totals._sum.soldPrice) || 0,
-          totalProfit: totals._sum.profit || 0,
-          totalCommission: totals._sum.commission || 0,
-          totalItems: totals._count || 0,
+          totalProfit: Number(totals._sum.profit) || 0,
+          totalCommission: Number(totals._sum.commission) || 0,
+          totalItems: Number(totals._count) || 0,
+          totalFinanceAmount: Number(totals._sum.financeAmount) || 0,
         },
       };
     } catch (err) {
@@ -171,30 +186,19 @@ class Sales {
       financer: sale.financer || "N/A",
     };
   }
-  async findUserSales({ salesTable, userId, startDate, endDate, page, limit }) {
+  async findUserSales({ salesTable, userId, startDate, endDate, page, limit, financeStatus }) {
     try {
-      // console.log("#$#$", salesTable);
       const salesModel = prisma[salesTable];
       const skip = (page - 1) * limit
       const whereClause = {
         sellerId: userId,
         createdAt: { gte: startDate, lte: endDate },
-        OR:
-          salesTable === "mobilesales"
-            ? [
-              { salesType: "direct" },
-              {
-                salesType: "finance",
-                financeStatus: { not: "pending" },
-              },
-            ]
-            : [
-              { financeStatus: "N/A" },
-              {
-                financeStatus: { not: "pending" },
-              },
-            ],
       };
+
+      if (financeStatus) {
+        whereClause.financeStatus = financeStatus;
+      }
+
       const includeClause =
         salesTable === "mobilesales"
           ? {
@@ -223,6 +227,7 @@ class Sales {
           soldPrice: true,
           profit: true,
           commission: true,
+          financeAmount: true,
         },
         _count: true,
       });
@@ -241,9 +246,10 @@ class Sales {
         data: results.map(transformSale),
         totals: {
           totalSales: Number(totals._sum.soldPrice) || 0,
-          totalProfit: totals._sum.profit || 0,
-          totalCommission: totals._sum.commission || 0,
-          totalItems: totals._count || 0,
+          totalProfit: Number(totals._sum.profit) || 0,
+          totalCommission: Number(totals._sum.commission) || 0,
+          totalItems: Number(totals._count) || 0,
+          totalFinanceAmount: Number(totals._sum.financeAmount) || 0,
         },
       };
     } catch (err) {

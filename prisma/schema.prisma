@@ -511,6 +511,29 @@ model shops {
   mobiletransferHistory_mobiletransferHistory_toshopToshops         mobiletransferHistory[]    @relation("mobiletransferHistory_toshopToshops")
 }
 
+model DailySalesAnalytics {
+  id                 Int      @id @default(autoincrement())
+  date               DateTime @db.Date
+  productId          Int
+  categoryId         Int
+  shopId             Int
+  sellerId           Int
+  financeStatus      String?  @db.VarChar(50)
+  totalUnitsSold     Int
+  totalRevenue       Decimal  @db.Decimal(12, 2)
+  totalCostOfGoods   Decimal  @db.Decimal(12, 2)
+  grossProfit        Decimal  @db.Decimal(12, 2)
+  totalCommission    Decimal  @db.Decimal(12, 2)
+  totalfinanceAmount Decimal? @db.Decimal(10, 0)
+
+  @@unique([date, productId, shopId, sellerId, financeStatus], map: "idx_unique_daily_sale")
+  @@index([categoryId], map: "idx_categoryId")
+  @@index([date], map: "idx_date")
+  @@index([productId], map: "idx_productId")
+  @@index([sellerId], map: "idx_sellerId")
+  @@index([shopId], map: "idx_shopId")
+}
+
 enum Expense_category {
   RENT
   UTILITIES
