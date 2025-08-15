@@ -135,6 +135,7 @@ class InventorymanagementRepository {
   }
   async findProductById(id, tx) {
     const prismaClient = tx || prisma;
+    console.log("passed id", id);
     try {
       const findItem = await prismaClient.accessories.findUnique({
         where: {
@@ -352,7 +353,7 @@ class InventorymanagementRepository {
               connect: { id: transferData.transferdBy },
             },
             accessories: {
-              connect: { id: id },
+              connect: { id: transferData.productId },
             },
           },
         });
@@ -389,9 +390,10 @@ class InventorymanagementRepository {
       );
     }
   }
-  async updateStockQuantityInAshop(id, quatity) {
+  async updateStockQuantityInAshop(id, quatity, tx) {
+    const prismaClient = tx || prisma;
     try {
-      const updateQuantity = await prisma.accessoryItems.update({
+      const updateQuantity = await prismaClient.accessoryItems.update({
         where: {
           id: id,
         },

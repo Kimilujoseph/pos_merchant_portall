@@ -535,9 +535,10 @@ class phoneinventoryrepository {
       );
     }
   }
-  async updateMobileItemsTransfer(id, quantity) {
+  async updateMobileItemsTransfer(id, quantity, tx) {
+    const prismaClient = tx || prisma;
     try {
-      const updatEdTransfer = await prisma.mobileItems.update({
+      const updatEdTransfer = await prismaClient.mobileItems.update({
         where: {
           id: id,
         },

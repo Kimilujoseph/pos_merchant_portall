@@ -2,6 +2,7 @@ import { APIError, STATUS_CODE } from "../Utils/app-error.js";
 import { phoneinventoryrepository } from "../databases/repository/mobile-inventory-repository.js";
 import { ShopmanagementRepository } from "../databases/repository/shop-repository.js";
 import { InventorymanagementRepository } from "../databases/repository/invetory-controller-repository.js";
+import prisma from "../databases/client.js";
 
 class transferManagementService {
   constructor() {
@@ -10,7 +11,7 @@ class transferManagementService {
     this.repository = new InventorymanagementRepository();
   }
   async createNewMobileTransfer(transferDetails) {
-    try {
+    return prisma.$transaction(async (tx) => {
       const { mainShop, distributedShop, stockId, userId } = transferDetails;
       const parsedQuantity = 1;
       const productId = parseInt(stockId, 10);
@@ -22,9 +23,9 @@ class transferManagementService {
         );
       }
       let [ShopOwningtheItem, ShoptoOwntheItem, stockItem] = await Promise.all([
-        this.shop.findShop({ name: mainShop }),
-        this.shop.findShop({ name: distributedShop }),
-        this.mobile.findItem(productId),
+        this.shop.findShop({ name: mainShop }, tx),
+        this.shop.findShop({ name: distributedShop }, tx),
+        this.mobile.findItem(productId, tx),
       ]);
       if (!ShopOwningtheItem || !ShoptoOwntheItem) {
         throw new APIError(
@@ -78,7 +79,8 @@ class transferManagementService {
       }
       const updateQuantity = await this.mobile.updateMobileItemsTransfer(
         existingStockItem.id,
-        parsedQuantity
+        parsedQuantity,
+        tx
       );
       // existingStockItem.quantity -= parsedQuantity;
       const newTransfer = {
@@ -91,7 +93,8 @@ class transferManagementService {
       };
       const newTransferHistory = await this.mobile.createTransferHistory(
         productId,
-        newTransfer
+        newTransfer,
+        tx
       );
 
       const distributionId = newTransferHistory.id;
@@ -113,7 +116,7 @@ class transferManagementService {
           productStatus: "new stock",
         };
         const shopId = ShoptoOwntheItem.id;
-        ShoptoOwntheItem = await this.shop.newAddedphoneItem(phoneDetails);
+        ShoptoOwntheItem = await this.shop.newAddedphoneItem(phoneDetails, tx);
       } else if (shoptoOwntheItemExistingStock.quantity === 0) {
         const phoneDetails = {
           productID: stockId,
@@ -127,7 +130,7 @@ class transferManagementService {
           productStatus: "return of product",
         };
         const shopId = ShoptoOwntheItem.id;
-        ShoptoOwntheItem = await this.mobile.newAddedphoneItem(phoneDetails);
+        ShoptoOwntheItem = await this.mobile.newAddedphoneItem(phoneDetails, tx);
       } else {
         throw new APIError(
           "phone inserting error",
@@ -135,20 +138,10 @@ class transferManagementService {
           "phone already exist"
         );
       }
-    } catch (err) {
-      console.log("@@", err);
-      if (err instanceof APIError) {
-        throw err;
-      }
-      throw new APIError(
-        "Distribution service error",
-        STATUS_CODE.INTERNAL_ERROR,
-        err
-      );
-    }
+    });
   }
   async createnewAccessoryTransfer(transferDetails) {
-    try {
+    return prisma.$transaction(async (tx) => {
       const {
         mainShop,
         distributedShop,
@@ -169,9 +162,9 @@ class transferManagementService {
         );
       }
       let [ShopOwningtheItem, ShoptoOwntheItem, stockItem] = await Promise.all([
-        this.shop.findShop({ name: mainShop }),
-        this.shop.findShop({ name: distributedShop }),
-        this.repository.findProductById(productId),
+        this.shop.findShop({ name: mainShop }, tx),
+        this.shop.findShop({ name: distributedShop }, tx),
+        this.repository.findProductById(productId, tx),
       ]);
       if (!ShopOwningtheItem || !ShoptoOwntheItem) {
         throw new APIError(
@@ -214,7 +207,6 @@ class transferManagementService {
           "you cannot tranfer to the same shop"
         );
       }
-      //confirm if the stock exist in the shop thats initializing the transfer
 
       let existingStockItem = await ShopOwningtheItem.accessoryItems.find(
         (item) => {
@@ -243,7 +235,8 @@ class transferManagementService {
         fromShop: shopId,
         toShop: shopToId,
         userId: sellerId,
-        productId: productId,
+        productId: parseInt(productId, 10),
+        transferdBy: sellerId,
         status: "pending",
         type: "transfer",
       };
@@ -260,11 +253,13 @@ class transferManagementService {
       if (!shoptoOwntheItemExistingStock) {
         const newTransferDone = await this.repository.createTransferHistory(
           stockId,
-          newTransfer
+          newTransfer,
+          tx
         );
-        const updateQuantity = await this.repository.updateStockQuantityInAshop(
+        await this.repository.updateStockQuantityInAshop(
           existingStockItem.id,
-          parsedQuantity
+          parsedQuantity,
+          tx
         );
         const distributionId = newTransferDone.id;
         const stockDetails = {
@@ -275,18 +270,21 @@ class transferManagementService {
           productStatus: "new stock",
         };
 
-        ShoptoOwntheItem = await this.shop.addNewAccessory(
+        await this.shop.addNewAccessory(
           shopToId,
-          stockDetails
+          stockDetails,
+          tx
         );
       } else if (AvailableQuantity < 10) {
         const newTransferDone = await this.repository.createTransferHistory(
           stockId,
-          newTransfer
+          newTransfer,
+          tx
         );
-        const updateQuantity = await this.repository.updateStockQuantityInAshop(
+        await this.repository.updateStockQuantityInAshop(
           existingStockItem.id,
-          parsedQuantity
+          parsedQuantity,
+          tx
         );
         const distributionId = newTransferDone.id;
         const stockDetails = {
@@ -298,9 +296,10 @@ class transferManagementService {
           productStatus: "added sock",
         };
 
-        ShoptoOwntheItem = await this.shop.addNewAccessory(
+        await this.shop.addNewAccessory(
           shopToId,
-          stockDetails
+          stockDetails,
+          tx
         );
       } else {
         throw new APIError(
@@ -309,16 +308,7 @@ class transferManagementService {
           `nought stock already exist in ${distributedShop}`
         );
       }
-    } catch (err) {
-      if (err instanceof APIError) {
-        throw err;
-      }
-      throw new APIError(
-        "Distribution service error",
-        STATUS_CODE.INTERNAL_ERROR,
-        err
-      );
-    }
+    });
   }
 }
 

@@ -40,11 +40,11 @@ const handleBulkTransfer = async (req, res) => {
         let processProductDistribution;
         if (category === "mobiles") {
             productDistribution = bulkDistribution.filter(item => item.stockId !== null);
-            console.log("wewe", productDistribution)
+
             processProductDistribution = productDistribution.length > 0 ? processDistribution(productDistribution, transferManager.createNewMobileTransfer) : [];
         } else {
             productDistribution = bulkDistribution.filter(item => item.stockId !== null);
-            console.log("wwe", productDistribution)
+
             processProductDistribution = productDistribution.length > 0 ? processDistribution(productDistribution, transferManager.createnewAccessoryTransfer) : [];
         }
         const allPromises = [...processProductDistribution];
