@@ -89,7 +89,7 @@ class Sales {
         createdAt: { gte: startDate, lte: endDate },
       };
 
-      // Dynamic include based on sales table
+
       const includeClause =
         salesTable === "mobilesales"
           ? {
@@ -120,8 +120,6 @@ class Sales {
           _count: true,
         }),
       ]);
-
-      // Transformation matching findUserSales' transformUserSale pattern
       const transformSale = (sale) => ({
         ...sale,
         productDetails:
@@ -131,9 +129,6 @@ class Sales {
         categoryDetails: sale.categories,
         financeDetails: this.mapFinanceDetails(sale),
       });
-
-      //.log("#$#$#$", results);
-
       return {
         data: results.map(transformSale),
         totals: {
@@ -180,9 +175,7 @@ class Sales {
     try {
       // console.log("#$#$", salesTable);
       const salesModel = prisma[salesTable];
-      const skip = (page - 1) * limit;
-
-      // Build conditional where clause based on the table
+      const skip = (page - 1) * limit
       const whereClause = {
         sellerId: userId,
         createdAt: { gte: startDate, lte: endDate },

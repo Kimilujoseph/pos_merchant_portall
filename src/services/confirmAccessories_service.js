@@ -10,27 +10,29 @@ class ConfirmAccessorymanagementService {
       shop: repository.shop || new ShopmanagementRepository(),
     };
   }
-  async confirmDistribution(confirmdeleliverydetails) {
+  async confirmDistribution(confirmdeliverydetails) {
     try {
-      const { shopname, userId, productId, quantity, transferId } =
-        confirmdeleliverydetails;
+      const { id, shopname, userId, productId, quantity, transferId } =
+        confirmdeliverydetails;
 
       const [
+        accessoryItemId,
         stockId,
         transferproductId,
         parsedQuantity,
         parsedTransferId,
         parsedUserId,
       ] = [
-        parseInt(productId, 10),
-        parseInt(transferId, 10),
-        parseInt(quantity, 10),
-        parseInt(transferId, 10),
-        parseInt(userId, 10),
-      ];
+          parseInt(id, 10),
+          parseInt(productId, 10),
+          parseInt(transferId, 10),
+          parseInt(quantity, 10),
+          parseInt(transferId, 10),
+          parseInt(userId, 10),
+        ];
 
       if (
-        [
+        [accessoryItemId,
           stockId,
           transferproductId,
           parsedQuantity,
@@ -63,7 +65,7 @@ class ConfirmAccessorymanagementService {
           parsedTransferId,
           parsedUserId,
           shopId,
-          accessoryId,
+          accessoryItemId,
           tx
         );
       });
@@ -121,16 +123,16 @@ class ConfirmAccessorymanagementService {
     }
     if (newAccessory.status === "confirmed") {
       throw new APIError(
-        "not found",
-        STATUS_CODE.NOT_FOUND,
-        "ACCESSORY ALREADY CONFIRMED"
+        "Bad Request",
+        STATUS_CODE.BAD_REQUEST,
+        "Accessory has already been confirmed."
       );
     }
     if (newAccessory.quantity < quantity) {
       throw new APIError(
-        "not found",
-        STATUS_CODE.NOT_FOUND,
-        "NOT ENOUGH QUANTITY"
+        "Bad Request",
+        STATUS_CODE.BAD_REQUEST,
+        "The quantity being confirmed exceeds the quantity that was transferred."
       );
     }
     return newAccessory;

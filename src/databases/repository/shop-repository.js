@@ -565,13 +565,10 @@ class ShopmanagementRepository {
   ) {
     const prismaClient = tx || this.prisma;
     try {
+      console.log("accessoryIDpASDED", accessoryId)
       const updatedNewAccessoryItem = await prismaClient.accessoryItems.update({
         where: {
-          accessoryID_shopID_transferId: {
-            accessoryID: accessoryId,
-            shopID: shopId,
-            transferId: transferproductId,
-          },
+          id: accessoryId
         },
         data: {
           status: "confirmed",
@@ -581,7 +578,6 @@ class ShopmanagementRepository {
       });
       return updatedNewAccessoryItem;
     } catch (err) {
-      console.log("err", err);
       throw new APIError(
         "Database error",
         STATUS_CODE.INTERNAL_ERROR,

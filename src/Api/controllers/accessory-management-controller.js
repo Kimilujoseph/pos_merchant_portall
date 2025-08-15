@@ -170,17 +170,16 @@ const createNewProductUpdate = async (req, res, next) => {
 const confirmAccessoryArrival = async (req, res, next) => {
   try {
     let userId;
-    const { shopname, productId, transferId, quantity } = req.body;
+    const { id, shopname, productId, transferId, quantity } = req.body;
     const user = req.user;
-    const stockId = parseInt(productId, 10);
-    const transferID = parseInt(transferId, 10);
     userId = parseInt(user.id, 10);
     await confirmAccessoryArrivalManagement.confirmDistribution({
+      id,
       userId,
       shopname,
-      stockId,
+      productId,
       quantity,
-      transferID,
+      transferId,
     });
 
     return res.status(200).json({
@@ -189,15 +188,7 @@ const confirmAccessoryArrival = async (req, res, next) => {
       error: false,
     });
   } catch (err) {
-    if (err instanceof APIError) {
-      return res
-        .status(err.statusCode)
-        .json({ message: err.message, error: true });
-    } else {
-      return res
-        .status(STATUS_CODE.INTERNAL_ERROR)
-        .json({ message: "Internal Server Error", error: true });
-    }
+    next(err);
   }
 };
 

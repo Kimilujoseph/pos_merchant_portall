@@ -8,15 +8,15 @@ let prisma;
 if (process.env.NODE_ENV === 'production') {
   prisma = new PrismaClient({
     transactionOptions: {
-      timeout: 20000, // 20 seconds for production
+      timeout: 20000,
     },
   });
 } else {
-  // In development, use a global variable to avoid creating multiple clients during hot-reloading.
+
   if (!global.prisma) {
     global.prisma = new PrismaClient({
       transactionOptions: {
-        timeout: 20000, // 20 seconds for development
+        timeout: 20000,
       },
     });
   }

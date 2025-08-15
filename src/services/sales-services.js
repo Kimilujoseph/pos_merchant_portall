@@ -147,9 +147,9 @@ class salesmanagment {
       const SALES_TABLE = ["mobilesales", "accessorysales"];
       const skip = (page - 1) * limit;
 
-      // Get all data in parallel
+
       const [salesResults, analyticsResults] = await Promise.all([
-        // Existing sales data fetch
+
         Promise.all(
           SALES_TABLE.map((table) =>
             this.sales.findSales({

@@ -112,102 +112,102 @@ class AccessoryManagementService {
     }
   }
 
-  async confirmDistribution(confirmDeliveryDetails) {
-    try {
-      const { shopname, userId, stockId, transferID } = confirmDeliveryDetails;
+  // async confirmDistribution(confirmDeliveryDetails) {
+  //   try {
+  //     const { shopname, userId, stockId, transferID } = confirmDeliveryDetails;
 
-      let [accessoryProduct, shopFound, transferDetails] = await Promise.all([
-        this.accessory.findItem(stockId),
-        this.shop.findShop({ name: "South B" }),
-        this.accessory.findAccessoryTransferHistory(transferID),
-      ]);
+  //     let [accessoryProduct, shopFound, transferDetails] = await Promise.all([
+  //       this.accessory.findItem(stockId),
+  //       this.shop.findShop({ name: "South B" }),
+  //       this.accessory.findAccessoryTransferHistory(transferID),
+  //     ]);
 
-      if (!accessoryProduct) {
-        throw new APIError(
-          "Not Found",
-          STATUS_CODE.NOT_FOUND,
-          "PRODUCT NOT FOUND"
-        );
-      } else if (accessoryProduct.stockStatus === "deleted") {
-        throw new APIError(
-          "Not Found",
-          STATUS_CODE.NOT_FOUND,
-          "PRODUCT IS DELETED"
-        );
-      } else if (accessoryProduct.stockStatus === "sold") {
-        throw new APIError(
-          "Not Found",
-          STATUS_CODE.NOT_FOUND,
-          "PRODUCT IS SOLD"
-        );
-      }
-      if (!transferDetails) {
-        throw new APIError(
-          "Not Found",
-          STATUS_CODE.BAD_REQUEST,
-          "TRANSFER HISTORY NOT FOUND"
-        );
-      }
-      if (transferDetails.status === "confirmed") {
-        throw new APIError(
-          "Already Confirmed",
-          STATUS_CODE.BAD_REQUEST,
-          "Product already confirmed"
-        );
-      }
-      if (transferDetails.productID !== stockId) {
-        throw new APIError(
-          "Mismatch Error",
-          STATUS_CODE.BAD_REQUEST,
-          "Appears a mismatch on product ID"
-        );
-      }
-      if (!shopFound) {
-        throw new APIError(
-          "Not Found",
-          STATUS_CODE.NOT_FOUND,
-          "SHOP NOT FOUND"
-        );
-      }
-      const shopId = shopFound.id;
+  //     if (!accessoryProduct) {
+  //       throw new APIError(
+  //         "Not Found",
+  //         STATUS_CODE.NOT_FOUND,
+  //         "PRODUCT NOT FOUND"
+  //       );
+  //     } else if (accessoryProduct.stockStatus === "deleted") {
+  //       throw new APIError(
+  //         "Not Found",
+  //         STATUS_CODE.NOT_FOUND,
+  //         "PRODUCT IS DELETED"
+  //       );
+  //     } else if (accessoryProduct.stockStatus === "sold") {
+  //       throw new APIError(
+  //         "Not Found",
+  //         STATUS_CODE.NOT_FOUND,
+  //         "PRODUCT IS SOLD"
+  //       );
+  //     }
+  //     if (!transferDetails) {
+  //       throw new APIError(
+  //         "Not Found",
+  //         STATUS_CODE.BAD_REQUEST,
+  //         "TRANSFER HISTORY NOT FOUND"
+  //       );
+  //     }
+  //     if (transferDetails.status === "confirmed") {
+  //       throw new APIError(
+  //         "Already Confirmed",
+  //         STATUS_CODE.BAD_REQUEST,
+  //         "Product already confirmed"
+  //       );
+  //     }
+  //     if (transferDetails.productID !== stockId) {
+  //       throw new APIError(
+  //         "Mismatch Error",
+  //         STATUS_CODE.BAD_REQUEST,
+  //         "Appears a mismatch on product ID"
+  //       );
+  //     }
+  //     if (!shopFound) {
+  //       throw new APIError(
+  //         "Not Found",
+  //         STATUS_CODE.NOT_FOUND,
+  //         "SHOP NOT FOUND"
+  //       );
+  //     }
+  //     const shopId = shopFound.id;
 
-      const sellerAssigned = shopFound.assignment.find((seller) => {
-        return seller.actors.id === userId && seller.status === "assigned";
-      });
-      if (!sellerAssigned) {
-        throw new APIError(
-          "Unauthorized",
-          STATUS_CODE.UNAUTHORIZED,
-          "You are not authorized to confirm arrival"
-        );
-      }
+  //     const sellerAssigned = shopFound.assignment.find((seller) => {
+  //       return seller.actors.id === userId && seller.status === "assigned";
+  //     });
+  //     if (!sellerAssigned) {
+  //       throw new APIError(
+  //         "Unauthorized",
+  //         STATUS_CODE.UNAUTHORIZED,
+  //         "You are not authorized to confirm arrival"
+  //       );
+  //     }
 
-      const distributionData = {
-        id: transferID,
-        status: "confirmed",
-        userId: userId,
-      };
-      const confirmedData = {
-        shopId: shopId,
-        transferId: transferID,
-        userId: userId,
-        status: "confirmed",
-      };
-      await Promise.all([
-        this.accessory.updateConfirmedAccessoryItem(confirmedData),
-        this.accessory.updateTransferHistory(distributionData),
-      ]);
-    } catch (err) {
-      if (err instanceof APIError) {
-        throw err;
-      }
-      throw new APIError(
-        "Distribution Service Error",
-        STATUS_CODE.INTERNAL_ERROR,
-        "Internal server error"
-      );
-    }
-  }
+  //     const distributionData = {
+  //       id: transferID,
+  //       status: "confirmed",
+  //       userId: userId,
+  //     };
+  //     const confirmedData = {
+  //       shopId: shopId,
+  //       transferId: transferID,
+  //       userId: userId,
+  //       status: "confirmed",
+  //     };
+  //     await Promise.all([
+  //       this.accessory.updateConfirmedAccessoryItem(confirmedData),
+  //       this.accessory.updateTransferHistory(distributionData),
+  //     ]);
+  //   } catch (err) {
+  //     if (err instanceof APIError) {
+  //       throw err;
+  //     }
+  //     throw new APIError(
+  //       "Distribution Service Error",
+  //       STATUS_CODE.INTERNAL_ERROR,
+  //       "Internal server error"
+  //     );
+  //   }
+  // }
 
   async updateAccessoryStock(id, updates, userId) {
     try {
