@@ -175,7 +175,7 @@ class salesmanagment {
     const parsedStartDate = new Date(startDate);
     const parsedEndDate = new Date(endDate);
 
-    // 1. Get historical data from the analytics table
+
     const historicalEndDate = parsedEndDate < today ? parsedEndDate : today;
     const historicalTotals = await this.analytics.getSalesAnalytics({
       startDate: parsedStartDate,
@@ -186,7 +186,7 @@ class salesmanagment {
       financeStatus,
     });
 
-    // 2. Get today's data from transactional tables if the range includes today
+
     let todaysTotals = { totalRevenue: 0, grossProfit: 0, totalCommission: 0, totalItems: 0, totalFinanceAmount: 0 };
     if (parsedEndDate >= today) {
       const todaySalesDetails = {
@@ -227,12 +227,12 @@ class salesmanagment {
     };
 
     const [paginatedMobileSales, paginatedAccessorySales] = await Promise.all([
-        userId 
-            ? this.sales.findUserSales({ ...paginatedSalesDetails, salesTable: 'mobilesales' })
-            : this.sales.findSales({ ...paginatedSalesDetails, salesTable: 'mobilesales' }),
-        userId 
-            ? this.sales.findUserSales({ ...paginatedSalesDetails, salesTable: 'accessorysales' })
-            : this.sales.findSales({ ...paginatedSalesDetails, salesTable: 'accessorysales' }),
+      userId
+        ? this.sales.findUserSales({ ...paginatedSalesDetails, salesTable: 'mobilesales' })
+        : this.sales.findSales({ ...paginatedSalesDetails, salesTable: 'mobilesales' }),
+      userId
+        ? this.sales.findUserSales({ ...paginatedSalesDetails, salesTable: 'accessorysales' })
+        : this.sales.findSales({ ...paginatedSalesDetails, salesTable: 'accessorysales' }),
     ]);
 
     const combinedSales = [...paginatedMobileSales.data, ...paginatedAccessorySales.data];

@@ -53,6 +53,130 @@ class AnalyticsRepository {
       );
     }
   }
+  async getTopProducts({ metric = 'revenue', limit = 10, startDate, endDate }) {
+    try {
+      const validMetrics = {
+        profit: 'grossProfit',
+        revenue: 'totalRevenue',
+        units: 'totalUnitsSold',
+      };
+
+      const metricField = validMetrics[metric] || 'totalRevenue';
+
+      const whereClause = {};
+      if (startDate && endDate) {
+        whereClause.date = {
+          gte: new Date(startDate),
+          lt: new Date(endDate),
+        };
+      }
+
+      const results = await prisma.dailySalesAnalytics.groupBy({
+        by: ['productId'],
+        where: whereClause,
+        _sum: {
+          grossProfit: true,
+          totalRevenue: true,
+          totalUnitsSold: true,
+        },
+        orderBy: {
+          _sum: {
+            [metricField]: 'desc',
+          },
+        },
+        take: Number(limit),
+      });
+      
+      return results;
+    } catch (err) {
+      console.error("Analytics Repository Error:", err);
+      throw new APIError(
+        "Database Error",
+        STATUS_CODE.INTERNAL_ERROR,
+        "Failed to retrieve top products analytics"
+      );
+    }
+  }
+
+  async getShopPerformanceSummary({ startDate, endDate }) {
+    try {
+      const whereClause = {};
+      if (startDate && endDate) {
+        whereClause.date = {
+          gte: new Date(startDate),
+          lt: new Date(endDate),
+        };
+      }
+
+      const results = await prisma.dailySalesAnalytics.groupBy({
+        by: ['shopId'],
+        where: whereClause,
+        _sum: {
+          totalRevenue: true,
+          grossProfit: true,
+          totalUnitsSold: true,
+          totalCommission: true,
+          totalfinanceAmount: true,
+        },
+        orderBy: {
+          _sum: {
+            totalRevenue: 'desc',
+          },
+        },
+      });
+      
+      return results;
+    } catch (err) {
+      console.error("Analytics Repository Error:", err);
+      throw new APIError(
+        "Database Error",
+        STATUS_CODE.INTERNAL_ERROR,
+        "Failed to retrieve shop performance summary"
+      );
+    }
+  }
+
+  async getSalesByStatus({ startDate, endDate, status }) {
+    try {
+      const whereClause = {};
+      if (startDate && endDate) {
+        whereClause.date = {
+          gte: new Date(startDate),
+          lt: new Date(endDate),
+        };
+      }
+
+      if (status) {
+        whereClause.financeStatus = status;
+      }
+
+      const results = await prisma.dailySalesAnalytics.groupBy({
+        by: ['financeStatus'],
+        where: whereClause,
+        _sum: {
+          totalRevenue: true,
+          grossProfit: true,
+          totalUnitsSold: true,
+          totalCommission: true,
+          totalfinanceAmount: true,
+        },
+        orderBy: {
+          _sum: {
+            totalRevenue: 'desc',
+          },
+        },
+      });
+      
+      return results;
+    } catch (err) {
+      console.error("Analytics Repository Error:", err);
+      throw new APIError(
+        "Database Error",
+        STATUS_CODE.INTERNAL_ERROR,
+        "Failed to retrieve sales by status summary"
+      );
+    }
+  }
 }
 
 export { AnalyticsRepository };
