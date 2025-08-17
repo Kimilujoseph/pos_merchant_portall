@@ -81,7 +81,7 @@ class Sales {
       );
     }
   }
-  async findSales({ salesTable, startDate, endDate, page, limit, shopId, categoryId, financeStatus }) {
+  async findSales({ salesTable, startDate, endDate, page, limit, shopId, categoryId, financerId, financeStatus }) {
     try {
       const salesModel = prisma[salesTable];
       const skip = (page - 1) * limit;
@@ -95,6 +95,10 @@ class Sales {
 
       if (categoryId) {
         whereClause.categoryId = categoryId;
+      }
+
+      if (financerId) {
+        whereClause.financerId = financerId;
       }
 
       if (financeStatus) {
@@ -186,7 +190,7 @@ class Sales {
       financer: sale.financer || "N/A",
     };
   }
-  async findUserSales({ salesTable, userId, startDate, endDate, page, limit, financeStatus }) {
+  async findUserSales({ salesTable, userId, startDate, endDate, page, limit, financerId, financeStatus }) {
     try {
       const salesModel = prisma[salesTable];
       const skip = (page - 1) * limit
@@ -194,6 +198,10 @@ class Sales {
         sellerId: userId,
         createdAt: { gte: startDate, lte: endDate },
       };
+
+      if (financerId) {
+        whereClause.financerId = financerId;
+      }
 
       if (financeStatus) {
         whereClause.financeStatus = financeStatus;

@@ -130,6 +130,7 @@ class salesmanagment {
             shopId: shop.id,
             sellerId: sellerId,
             financeStatus: financeStatus,
+            financeId: financeId ? parseInt(financeId) : null,
             totalUnitsSold: soldUnits,
             totalRevenue: soldprice,
             totalCostOfGoods: productDetails.productCost * soldUnits,
@@ -140,12 +141,13 @@ class salesmanagment {
 
           await tx.dailySalesAnalytics.upsert({
             where: {
-              date_productId_shopId_sellerId_financeStatus: {
+              date_productId_shopId_sellerId_financeStatus_financeId: {
                 date: today,
                 productId: parseInt(productId),
                 shopId: shop.id,
                 sellerId: sellerId,
                 financeStatus: financeStatus,
+                financeId: financeId ? parseInt(financeId) : null,
               },
             },
             update: {
@@ -167,7 +169,7 @@ class salesmanagment {
   }
 
   async _getHybridSalesData(filters) {
-    const { startDate, endDate, page, limit, shopId, userId, categoryId, financeStatus } = filters;
+    const { startDate, endDate, page, limit, shopId, userId, categoryId, financerId, financeStatus } = filters;
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -183,6 +185,7 @@ class salesmanagment {
       shopId,
       sellerId: userId,
       categoryId,
+      financerId,
       financeStatus,
     });
 
@@ -195,6 +198,7 @@ class salesmanagment {
         shopId,
         userId,
         categoryId,
+        financerId,
         financeStatus,
         page: 1,
         limit: 10000, // A large limit to get all of today's sales
@@ -221,6 +225,7 @@ class salesmanagment {
       shopId,
       userId,
       categoryId,
+      financerId,
       financeStatus,
       page,
       limit,
@@ -284,6 +289,14 @@ class salesmanagment {
   }
 
   async generateShopSales(filters) {
+    try {
+      return await this._getHybridSalesData(filters);
+    } catch (err) {
+      this.handleServiceError(err);
+    }
+  }
+
+  async generateFinancerSales(filters) {
     try {
       return await this._getHybridSalesData(filters);
     } catch (err) {

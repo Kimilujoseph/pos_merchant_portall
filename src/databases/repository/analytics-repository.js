@@ -4,7 +4,7 @@ import { APIError, STATUS_CODE } from "../../Utils/app-error.js";
 const prisma = new PrismaClient();
 
 class AnalyticsRepository {
-  async getSalesAnalytics({ startDate, endDate, shopId, sellerId, categoryId, financeStatus }) {
+  async getSalesAnalytics({ startDate, endDate, shopId, sellerId, categoryId, financerId, financeStatus }) {
     try {
       const whereClause = {
         date: {
@@ -21,6 +21,9 @@ class AnalyticsRepository {
       }
       if (categoryId) {
         whereClause.categoryId = categoryId;
+      }
+      if (financerId) {
+        whereClause.financeId = financerId;
       }
       if (financeStatus) {
         whereClause.financeStatus = financeStatus;

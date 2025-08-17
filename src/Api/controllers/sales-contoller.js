@@ -8,7 +8,7 @@ const salesService = new salesmanagment();
 const handleGetSales = async (req, res, next) => {
   try {
     const { user, salesQuery } = req;
-    const { shopId, categoryId, userId } = req.params;
+    const { shopId, categoryId, userId, financerId } = req.params;
 
     let serviceMethod;
     const servicePayload = { ...salesQuery };
@@ -32,6 +32,12 @@ const handleGetSales = async (req, res, next) => {
       }
       serviceMethod = 'getUserSales';
       servicePayload.userId = parsedUserId;
+    } else if (financerId) {
+      if (!checkRole(user.role, ["manager", "superuser"])) {
+        throw new APIError("Not authorized", STATUS_CODE.UNAUTHORIZED, "You are not authorized to view financer sales.");
+      }
+      serviceMethod = 'generateFinancerSales';
+      servicePayload.financerId = parseInt(financerId, 10);
     } else {
       if (!checkRole(user.role, ["manager", "superuser"])) {
         throw new APIError("Not authorized", STATUS_CODE.UNAUTHORIZED, "You are not authorized to view general sales.");

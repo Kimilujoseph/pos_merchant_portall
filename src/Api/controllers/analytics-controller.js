@@ -11,8 +11,8 @@ const getTopProducts = async (req, res, next) => {
             throw new APIError("Not authorized", STATUS_CODE.UNAUTHORIZED, "You are not authorized to view analytics.");
         }
 
-        const { metric, limit, startDate, endDate } = req.query;
-        const data = await analyticsService.getTopProductsAnalytics({ metric, limit, startDate, endDate });
+        const { metric, limit, startDate, endDate, financerId } = req.query;
+        const data = await analyticsService.getTopProductsAnalytics({ metric, limit, startDate, endDate, financerId });
 
         handleResponse({
             res,
@@ -30,8 +30,8 @@ const getShopPerformanceSummary = async (req, res, next) => {
             throw new APIError("Not authorized", STATUS_CODE.UNAUTHORIZED, "You are not authorized to view analytics.");
         }
 
-        const { startDate, endDate } = req.query;
-        const data = await analyticsService.getShopPerformanceSummary({ startDate, endDate });
+        const { startDate, endDate, financerId } = req.query;
+        const data = await analyticsService.getShopPerformanceSummary({ startDate, endDate, financerId });
 
         handleResponse({
             res,
@@ -49,8 +49,8 @@ const getSalesByStatus = async (req, res, next) => {
             throw new APIError("Not authorized", STATUS_CODE.UNAUTHORIZED, "You are not authorized to view analytics.");
         }
 
-        const { startDate, endDate, status } = req.query;
-        const data = await analyticsService.getSalesByStatus({ startDate, endDate, status });
+        const { startDate, endDate, status, financerId } = req.query;
+        const data = await analyticsService.getSalesByStatus({ startDate, endDate, status, financerId });
 
         handleResponse({
             res,

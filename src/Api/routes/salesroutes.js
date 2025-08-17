@@ -9,6 +9,7 @@ const route = express.Router();
 route.get("/report/category/:categoryId", verifyUser, parseSalesQuery, handleGetSales);
 route.get("/report/shop/:shopId", verifyUser, parseSalesQuery, handleGetSales);
 route.get("/report/user/:userId", verifyUser, parseSalesQuery, handleGetSales);
+route.get("/report/financer/:financerId", verifyUser, parseSalesQuery, handleGetSales);
 route.get("/report", verifyUser, parseSalesQuery, handleGetSales);
 
 // Make a sale route
