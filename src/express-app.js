@@ -18,6 +18,8 @@ import salesroute from "./Api/routes/salesroutes.js";
 import categoryRoutes from "./Api/routes/category-management-routes.js";
 import customerRoutes from "./Api/routes/customer-management-routes.js";
 import analyticsRoutes from "./Api/routes/analytics-routes.js";
+import commissionRoutes from "./Api/routes/commission-routes.js";
+import salaryRoutes from "./Api/routes/salary-routes.js";
 import config from "./Config/index.js";
 const { APP_SECRET, MONGO_URL } = config;
 import path from "path";
@@ -107,6 +109,8 @@ const App = async (app) => {
   app.use("/api/transfer", transferRoutes);
   app.use("/api/customer", customerRoutes);
   app.use("/api/analytics", analyticsRoutes);
+  app.use("/api/commissions", commissionRoutes);
+  app.use("/api/salaries", salaryRoutes);
   app.use("/api/status", (req, res) => {
     res.status(200).json({ message: "Server is up and running" });
   });
