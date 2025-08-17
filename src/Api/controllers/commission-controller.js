@@ -20,7 +20,7 @@ const handleCreateCommissionPayment = async (req, res, next) => {
 
     handleResponse({
       res,
-      statusCode: STATUS_CODE.CREATED,
+      statusCode: 201,
       message: "Commission payment created successfully",
       data: result,
     });
@@ -29,4 +29,29 @@ const handleCreateCommissionPayment = async (req, res, next) => {
   }
 };
 
-export { handleCreateCommissionPayment };
+const handleGetCommissionPayments = async (req, res, next) => {
+  try {
+    const { user } = req;
+    const { page = 1, limit = 10 } = req.query;
+    const options = { page: parseInt(page, 10), limit: parseInt(limit, 10) };
+
+    if (checkRole(user.role, ['seller'])) {
+      options.sellerId = user.id;
+    } else if (!checkRole(user.role, ['manager', 'superuser'])) {
+
+      throw new APIError("Not authorized", STATUS_CODE.UNAUTHORIZED, "You are not authorized to view commission payments.");
+    }
+
+    const result = await commissionService.getCommissionPayments(options);
+
+    handleResponse({
+      res,
+      message: "Commission payments retrieved successfully",
+      data: result,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export { handleCreateCommissionPayment, handleGetCommissionPayments };

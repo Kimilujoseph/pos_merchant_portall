@@ -32,6 +32,18 @@ class SalaryService {
     // 3. Create the salary payment
     return this.repository.createSalaryPayment(paymentData);
   }
+
+  async getSalaryPayments(options) {
+    try {
+      return await this.repository.findSalaryPayments(options);
+    } catch (err) {
+      throw new APIError(
+        'Service Error',
+        STATUS_CODE.INTERNAL_ERROR,
+        'Failed to get salary payments'
+      );
+    }
+  }
 }
 
 export { SalaryService };

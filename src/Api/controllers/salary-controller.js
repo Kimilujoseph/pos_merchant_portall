@@ -29,4 +29,25 @@ const handleCreateSalaryPayment = async (req, res, next) => {
   }
 };
 
-export { handleCreateSalaryPayment };
+const handleGetSalaryPayments = async (req, res, next) => {
+  try {
+    if (!checkRole(req.user.role, ['manager', 'superuser'])) {
+      throw new APIError("Not authorized", STATUS_CODE.UNAUTHORIZED, "You are not authorized to view salary payments.");
+    }
+
+    const { page = 1, limit = 10 } = req.query;
+    const options = { page: parseInt(page, 10), limit: parseInt(limit, 10) };
+
+    const result = await salaryService.getSalaryPayments(options);
+
+    handleResponse({
+      res,
+      message: "Salary payments retrieved successfully",
+      data: result,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export { handleCreateSalaryPayment, handleGetSalaryPayments };

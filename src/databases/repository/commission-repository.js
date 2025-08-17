@@ -4,6 +4,60 @@ import { APIError, STATUS_CODE } from '../../Utils/app-error.js';
 const prisma = new PrismaClient();
 
 class CommissionRepository {
+  async findCommissionPayments({ page = 1, limit = 10, sellerId } = {}) {
+    try {
+      const skip = (page - 1) * limit;
+      const whereClause = {};
+      if (sellerId) {
+        whereClause.sellerId = sellerId;
+      }
+
+      const [payments, total] = await prisma.$transaction([
+        prisma.commissionPayment.findMany({
+          where: whereClause,
+          skip,
+          take: limit,
+          orderBy: { paymentDate: 'desc' },
+          include: {
+            actors_CommissionPayment_sellerIdToactors: {
+              select: { id: true, name: true, email: true },
+            },
+            actors_CommissionPayment_processedByIdToactors: {
+              select: { id: true, name: true, email: true },
+            },
+          },
+        }),
+        prisma.commissionPayment.count({ where: whereClause }),
+      ]);
+
+      const formattedPayments = payments.map(p => {
+        const { 
+          actors_CommissionPayment_sellerIdToactors, 
+          actors_CommissionPayment_processedByIdToactors, 
+          ...rest 
+        } = p;
+        return {
+          ...rest,
+          seller: actors_CommissionPayment_sellerIdToactors,
+          processedBy: actors_CommissionPayment_processedByIdToactors,
+        };
+      });
+
+      return {
+        payments: formattedPayments,
+        total,
+        totalPages: Math.ceil(total / limit),
+        currentPage: page,
+      };
+    } catch (err) {
+      throw new APIError(
+        'Database Error',
+        STATUS_CODE.INTERNAL_ERROR,
+        'Failed to retrieve commission payments'
+      );
+    }
+  }
+
   async createCommissionPayment(paymentData, salesIds, tx) {
     const prismaClient = tx || prisma;
     try {

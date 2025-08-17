@@ -79,6 +79,18 @@ class CommissionService {
       return commissionPayment;
     });
   }
+
+  async getCommissionPayments(options) {
+    try {
+      return await this.repository.findCommissionPayments(options);
+    } catch (err) {
+      throw new APIError(
+        'Service Error',
+        STATUS_CODE.INTERNAL_ERROR,
+        'Failed to get commission payments'
+      );
+    }
+  }
 }
 
 export { CommissionService };
