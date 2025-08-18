@@ -3,8 +3,8 @@ import { CommissionRepository } from '../databases/repository/commission-reposit
 import { usermanagemenRepository } from '../databases/repository/usermanagement-controller-repository.js';
 import { Sales } from '../databases/repository/sales-repository.js';
 import { APIError, STATUS_CODE } from '../Utils/app-error.js';
+import prisma from "../databases/client.js";
 
-const prisma = new PrismaClient();
 
 class CommissionService {
   constructor() {
@@ -90,6 +90,55 @@ class CommissionService {
         'Failed to get commission payments'
       );
     }
+  }
+
+  async voidCommissionPayment(paymentId) {
+    return prisma.$transaction(async (tx) => {
+
+      const payment = await tx.commissionPayment.findUnique({
+        where: { id: paymentId },
+        include: {
+          CommissionPaymentsOnMobileSales: true,
+          CommissionPaymentsOnAccessorySales: true,
+        },
+      });
+
+      if (!payment) {
+        throw new APIError('Not Found', STATUS_CODE.NOT_FOUND, 'Commission payment not found.');
+      }
+      if (payment.status === 'VOIDED') {
+        throw new APIError('Bad Request', STATUS_CODE.BAD_REQUEST, 'This payment has already been voided.');
+      }
+      console.log(payment);
+
+
+      for (const mobileSaleLink of payment.CommissionPaymentsOnMobileSales) {
+        await tx.mobilesales.update({
+          where: { id: mobileSaleLink.mobileSaleId },
+          data: {
+            commissionPaid: {
+              decrement: payment.amountPaid,
+            },
+            commisssionStatus: 'pending',
+          },
+        });
+      }
+
+      for (const accessorySaleLink of payment.CommissionPaymentsOnAccessorySales) {
+        await tx.accessorysales.update({
+          where: { id: accessorySaleLink.accessorySaleId },
+          data: {
+            commissionPaid: {
+              decrement: payment.amountPaid,
+            },
+            commisssionStatus: 'pending',
+          },
+        });
+      }
+
+
+      return await this.repository.voidCommissionPayment(paymentId, tx);
+    });
   }
 }
 

@@ -35,10 +35,10 @@ const handleGetCommissionPayments = async (req, res, next) => {
     const { page = 1, limit = 10 } = req.query;
     const options = { page: parseInt(page, 10), limit: parseInt(limit, 10) };
 
+
     if (checkRole(user.role, ['seller'])) {
       options.sellerId = user.id;
     } else if (!checkRole(user.role, ['manager', 'superuser'])) {
-
       throw new APIError("Not authorized", STATUS_CODE.UNAUTHORIZED, "You are not authorized to view commission payments.");
     }
 
@@ -54,4 +54,25 @@ const handleGetCommissionPayments = async (req, res, next) => {
   }
 };
 
-export { handleCreateCommissionPayment, handleGetCommissionPayments };
+const handleVoidCommissionPayment = async (req, res, next) => {
+  try {
+    if (!checkRole(req.user.role, ['manager', 'superuser'])) {
+      throw new APIError("Not authorized", STATUS_CODE.UNAUTHORIZED, "You are not authorized to void commission payments.");
+    }
+
+    const { id } = req.params;
+    const paymentId = parseInt(id, 10);
+
+    const result = await commissionService.voidCommissionPayment(paymentId);
+
+    handleResponse({
+      res,
+      message: "Commission payment voided successfully",
+      data: result,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export { handleCreateCommissionPayment, handleGetCommissionPayments, handleVoidCommissionPayment };

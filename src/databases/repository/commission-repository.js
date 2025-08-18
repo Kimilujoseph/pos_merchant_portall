@@ -166,6 +166,22 @@ class CommissionRepository {
       );
     }
   }
+
+  async voidCommissionPayment(paymentId, tx) {
+    const prismaClient = tx || prisma;
+    try {
+      return await prismaClient.commissionPayment.update({
+        where: { id: paymentId },
+        data: { status: 'VOIDED' },
+      });
+    } catch (err) {
+      throw new APIError(
+        'Database Error',
+        STATUS_CODE.INTERNAL_ERROR,
+        'Failed to void commission payment'
+      );
+    }
+  }
 }
 
 export { CommissionRepository };

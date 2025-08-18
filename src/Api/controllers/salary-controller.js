@@ -50,4 +50,25 @@ const handleGetSalaryPayments = async (req, res, next) => {
   }
 };
 
-export { handleCreateSalaryPayment, handleGetSalaryPayments };
+const handleVoidSalaryPayment = async (req, res, next) => {
+  try {
+    if (!checkRole(req.user.role, ['manager', 'superuser'])) {
+      throw new APIError("Not authorized", STATUS_CODE.UNAUTHORIZED, "You are not authorized to void salary payments.");
+    }
+
+    const { id } = req.params;
+    const paymentId = parseInt(id, 10);
+
+    const result = await salaryService.voidSalaryPayment(paymentId);
+
+    handleResponse({
+      res,
+      message: "Salary payment voided successfully",
+      data: result,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export { handleCreateSalaryPayment, handleGetSalaryPayments, handleVoidSalaryPayment };

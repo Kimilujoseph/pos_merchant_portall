@@ -11,6 +11,7 @@ model CommissionPayment {
   id                                             Int                                  @id @default(autoincrement())
   sellerId                                       Int
   amountPaid                                     Decimal                              @db.Decimal(10, 2)
+  status                                         String?                              @db.VarChar(100)
   paymentDate                                    DateTime
   periodStartDate                                DateTime
   periodEndDate                                  DateTime
@@ -116,6 +117,8 @@ model Return {
   mobileSaleId    Int?
   accessorySaleId Int?
   customerId      Int
+  restock         Boolean?        @default(true)
+  refundAmount    Decimal?        @db.Decimal(10, 0)
   reason          String
   returnedAt      DateTime        @default(now())
   processedBy     Int
@@ -134,6 +137,7 @@ model SalaryPayment {
   id                                         Int      @id @default(autoincrement())
   employeeId                                 Int
   amount                                     Decimal  @db.Decimal(10, 2)
+  status                                     String?  @db.VarChar(100)
   paymentDate                                DateTime
   payPeriodMonth                             Int
   payPeriodYear                              Int
@@ -229,6 +233,7 @@ model accessorysales {
   shopID                             Int
   sellerId                           Int
   soldPrice                          Decimal                              @db.Decimal(10, 2)
+  status                             String?                              @default("COMPLETED") @db.VarChar(100)
   profit                             Int                                  @db.UnsignedInt
   createdAt                          DateTime?                            @default(now()) @db.DateTime(0)
   commisssionStatus                  accessorysales_commisssionStatus?
@@ -437,6 +442,7 @@ model mobilesales {
   commission                      Int?                              @default(0)
   profit                          Int?                              @default(0)
   soldPrice                       Int?                              @default(0)
+  status                          String?                           @default("COMPLETED") @db.VarChar(100)
   customerId                      Int?
   financerId                      Int?
   paymentId                       Int?

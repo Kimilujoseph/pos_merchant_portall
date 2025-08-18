@@ -65,6 +65,21 @@ class SalaryRepository {
       );
     }
   }
+
+  async voidSalaryPayment(paymentId) {
+    try {
+      return await prisma.salaryPayment.update({
+        where: { id: paymentId },
+        data: { status: 'VOIDED' },
+      });
+    } catch (err) {
+      throw new APIError(
+        'Database Error',
+        STATUS_CODE.INTERNAL_ERROR,
+        'Failed to void salary payment'
+      );
+    }
+  }
 }
 
 export { SalaryRepository };

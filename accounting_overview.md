@@ -122,3 +122,21 @@ WHERE expenseDate >= '2025-07-01' AND expenseDate <= '2025-07-31';
 -- 5. Calculate Net Profit in your application code
 const netProfit = totalRevenue - (cogs + commissionsPaid + salariesPaid + otherExpenses);
 ```
+  Based on our discussion, here is the updated plan:
+
+   1. Update Prisma Schema: Add the new Return model and add status fields to the CommissionPayment, SalaryPayment, mobilesales, and
+      accessorysales models.
+   2. Implement Product Returns:
+       * Create a new repository, service, and controller for Return transactions.
+       * Implement the POST /api/returns endpoint.
+       * The service logic will handle the full transaction: creating the return record, updating inventory, updating the original sale's
+          status, and creating the negative entry in DailySalesAnalytics.
+   3. Implement Payment Voiding:
+       * Create a POST /api/commissions/pay/{id}/void endpoint.
+       * The service logic will handle the transaction: updating the payment status to VOIDED and decrementing the commissionPaid on all
+         associated sales.
+       * Do the same for salary payments with a POST /api/salaries/pay/{id}/void endpoint.
+
+  This is a comprehensive plan that ensures your application's financial data remains accurate, auditable, and robust.
+
+  Shall I begin by updating the Prisma schema with these changes?

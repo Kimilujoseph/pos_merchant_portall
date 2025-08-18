@@ -44,6 +44,28 @@ class SalaryService {
       );
     }
   }
+
+  async voidSalaryPayment(paymentId) {
+    try {
+      const payment = await prisma.salaryPayment.findUnique({ where: { id: paymentId } });
+      if (!payment) {
+        throw new APIError('Not Found', STATUS_CODE.NOT_FOUND, 'Salary payment not found.');
+      }
+      if (payment.status === 'VOIDED') {
+        throw new APIError('Bad Request', STATUS_CODE.BAD_REQUEST, 'This payment has already been voided.');
+      }
+      return await this.repository.voidSalaryPayment(paymentId);
+    } catch (err) {
+      if (err instanceof APIError) {
+        throw err;
+      }
+      throw new APIError(
+        'Service Error',
+        STATUS_CODE.INTERNAL_ERROR,
+        'Failed to void salary payment'
+      );
+    }
+  }
 }
 
 export { SalaryService };
