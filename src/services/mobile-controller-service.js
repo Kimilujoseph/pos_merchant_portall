@@ -129,6 +129,7 @@ class MobilemanagementService {
       }
       return history;
     } catch (err) {
+
       if (err instanceof APIError) {
         throw err;
       }

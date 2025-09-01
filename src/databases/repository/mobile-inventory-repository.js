@@ -510,7 +510,13 @@ class phoneinventoryrepository {
           productID: productId,
         },
         include: {
-          actors: {
+          actors_mobileHistory_addedByToactors: {
+            select: {
+              name: true,
+              email: true,
+            },
+          },
+          actors_mobileHistory_sellerIdToactors: {
             select: {
               name: true,
               email: true,
@@ -526,6 +532,7 @@ class phoneinventoryrepository {
       });
       return productHistory;
     } catch (err) {
+      console.log(err);
       if (err instanceof APIError) {
         throw err;
       }
