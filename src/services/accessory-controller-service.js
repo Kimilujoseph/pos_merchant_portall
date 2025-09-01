@@ -2,7 +2,7 @@ import { AccessoryInventoryRepository } from "../databases/repository/accessory-
 import { ShopmanagementRepository } from "../databases/repository/shop-repository.js";
 import { CategoryManagementRepository } from "../databases/repository/category-contoller-repository.js";
 import { APIError, STATUS_CODE } from "../Utils/app-error.js";
-import { validateUpdateInputs } from "../helpers/updateValidationHelper.js";
+import { validateUpdateInputs, validateItemsInputs } from "../helpers/updateValidationHelper.js";
 import prisma from "../databases/client.js";
 
 class AccessoryManagementService {
@@ -48,6 +48,7 @@ class AccessoryManagementService {
         );
         return newProduct;
       } catch (err) {
+        console.log(err)
         if (err instanceof APIError) {
           throw err;
         }
@@ -220,7 +221,7 @@ class AccessoryManagementService {
           "Invalid value provided"
         );
       }
-      const validUpdates = validateUpdateInputs(updates);
+      const validUpdates = validateItemsInputs(updates);
       const [shopFound, accessoryFound] = await Promise.all([
         this.shop.findShop({ name: "South B" }),
         this.accessory.findItem(accessoryId),
@@ -267,6 +268,7 @@ class AccessoryManagementService {
       );
       return updatedAccessory;
     } catch (err) {
+      console.log("error", err)
       if (err instanceof APIError) {
         throw err;
       }

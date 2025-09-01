@@ -89,7 +89,7 @@ class AnalyticsRepository {
         },
         take: Number(limit),
       });
-      
+
       return results;
     } catch (err) {
       console.error("Analytics Repository Error:", err);
@@ -127,7 +127,7 @@ class AnalyticsRepository {
           },
         },
       });
-      
+
       return results;
     } catch (err) {
       console.error("Analytics Repository Error:", err);
@@ -169,7 +169,7 @@ class AnalyticsRepository {
           },
         },
       });
-      
+
       return results;
     } catch (err) {
       console.error("Analytics Repository Error:", err);
@@ -177,6 +177,43 @@ class AnalyticsRepository {
         "Database Error",
         STATUS_CODE.INTERNAL_ERROR,
         "Failed to retrieve sales by status summary"
+      );
+    }
+  }
+
+  async getSalesByFinancer({ startDate, endDate, financeID }) {
+    try {
+      const whereclause = {
+        date: {
+          gte: new Date(startDate),
+          lt: new Date(endDate),
+        },
+        ...(financeID && { financeID })
+      }
+      const financeResult = await prisma.dailySalesAnalytics.groupBy({
+        by: ['financeId'],
+        where: whereclause,
+        _sum: {
+          totalRevenue: true,
+          grossProfit: true,
+          totalUnitsSold: true,
+          totalCommission: true,
+          totalfinanceAmount: true,
+        },
+        orderBy: {
+          _sum: {
+            totalRevenue: 'desc',
+          },
+        }
+
+      })
+      return financeResult
+    }
+    catch (err) {
+      throw new APIError(
+        "Database Error",
+        STATUS_CODE.INTERNAL_ERROR,
+        "Failed to retrieve sales by financer"
       );
     }
   }

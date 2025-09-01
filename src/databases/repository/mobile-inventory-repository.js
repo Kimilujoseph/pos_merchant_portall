@@ -430,13 +430,14 @@ class phoneinventoryrepository {
             select: {
               itemName: true,
               itemModel: true,
-              brand: true,
-              minPrice: true,
-              maxPrice: true,
-              itemType: true,
+
             },
           },
-          mobilefinance: true,
+          Supplier: {
+            select: {
+              name: true
+            }
+          }
         },
       });
       console.log(productFound);

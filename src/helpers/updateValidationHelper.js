@@ -1,7 +1,7 @@
 import { type } from "os";
 import { APIError, STATUS_CODE } from "../Utils/app-error.js";
 const validateUpdateInputs = (updates) => {
-  //lets update the  update objetc first
+
   if (
     !updates ||
     typeof updates !== "object" ||
@@ -18,10 +18,23 @@ const validateUpdateInputs = (updates) => {
     IMEI: (value) => typeof value === "string" && value.length <= 15,
     stockStatus: (value) =>
       typeof value === "string" &&
-      ["faulty", "reserved", "available"].includes(value),
+      ["faulty", "reserved", "distributed", "available"].includes(value),
     commission: (value) => !isNaN(value) && value >= 0,
     productCost: (value) => !isNaN(value) && value >= 0,
     discount: (value) => !isNaN(value) && value >= 0,
+    CategoryId: (value) => !isNaN(value) && value >= 0,
+    supplierId: (value) => !isNaN(value) && value >= 0,
+    color: (value) => typeof value === "string" && value.length <= 30,
+    storage: (value) => typeof value === "string" && value.length <= 30,
+    phoneType: (value) => typeof value === "string" && value.length <= 30,
+    batchNumber: (value) => typeof value === "string" && value.length <= 30,
+    itemType: (value) =>
+      typeof value === "string" &&
+
+      ["mobiles", "accessories"].includes(value),
+    paymentStatus: (value) =>
+      typeof value === "string" &&
+      ["paid", "unpaid", "partial"].includes(value),
   };
 
   //lets lop through the updates of object while validating
@@ -46,6 +59,7 @@ const validateUpdateInputs = (updates) => {
       "commissssion",
       "productcost",
       "discount",
+      "CategoryId"
     ].includes(field)
       ? Number(value)
       : value;
@@ -54,6 +68,7 @@ const validateUpdateInputs = (updates) => {
 };
 
 const validateItemsInputs = (accessoryDetails) => {
+  console.log("accessory", accessoryDetails)
   if (
     !accessoryDetails ||
     typeof accessoryDetails !== "object" ||
@@ -67,14 +82,16 @@ const validateItemsInputs = (accessoryDetails) => {
   }
   const validObjects = {
     CategoryId: (value) => !isNaN(value) && value >= 0,
-    availableStock: (value) => !isNaN(value) && value >= 0,
+    supplierId: (value) => !isNaN(value) && value >= 0,
+    CategoryId: (value) => !isNaN(value) && value >= 0,
+    //availableStock: (value) => !isNaN(value) && value >= 0,
     stockStatus: (value) =>
-      ["available", "suspended"].includes(value) && typeof value === "string",
+      ["available", "suspended", "faulty"].includes(value) && typeof value === "string",
     commission: (value) => !isNaN(value) && value >= 0,
     discount: (value) => !isNaN(value) && value >= 0,
-    productcost: (value) => !isNaN(value) && value >= 0,
+    productCost: (value) => !isNaN(value) && value >= 0,
     faultyItems: (value) => !isNaN(value) && value >= 0,
-    supplierName: (value) => typeof value === "string",
+    color: (value) => typeof value === "string" && value.length <= 30,
     productType: (value) => typeof value === "string",
     batchNumber: (value) => typeof value === "string",
     user: (value) => !isNaN(value),
@@ -98,7 +115,7 @@ const validateItemsInputs = (accessoryDetails) => {
     }
     validValues[field] = [
       "CategoryId",
-      "availbleStock",
+      "SupplierId",
       "commission",
       "productcost",
       "faultyItems",

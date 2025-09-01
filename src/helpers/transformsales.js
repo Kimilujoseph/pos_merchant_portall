@@ -8,6 +8,7 @@ const transformSales = (rawSale) => {
     productcost: Number(
       rawSale.mobiles?.productCost || rawSale.accessories?.productCost || 0
     ),
+    status: rawSale.status || "completed",
     productmodel: rawSale.categories?.itemModel || "N/A",
     productname: rawSale.categories?.itemName || "Unknown",
     totalnetprice: Number(rawSale.soldPrice),
@@ -32,13 +33,12 @@ const transformSales = (rawSale) => {
     shopname: rawSale.shops?.shopName || "Unknown Shop",
   };
 
-  // Add mobile-specific fields if available
   if (rawSale.mobiles) {
     base.productmodel = rawSale.mobiles.phoneType || base.productmodel;
     base.category = "mobiles";
   }
 
-  // Add accessory-specific fields if available
+
   if (rawSale.accessories) {
     base.category = "accessories";
   }

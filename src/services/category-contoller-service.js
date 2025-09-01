@@ -50,9 +50,9 @@ class CategoryManagementService {
                         minPrice: itemStock.minPrice,
                         maxPrice: itemStock.maxPrice,
                         brand: itemStock.brand,
-                        category:itemStock.category,
+                        category: itemStock.category,
                         availableStock: itemStock.mobiles.length,
-                        Items: itemStock.mobiles
+                        // Items: itemStock.mobiles
                     }
                 } else {
                     return {
@@ -62,9 +62,9 @@ class CategoryManagementService {
                         minPrice: itemStock.minPrice,
                         maxPrice: itemStock.maxPrice,
                         brand: itemStock.brand,
-                        category:itemStock.category,
+                        category: itemStock.category,
                         availableStock: itemStock.accessories.length,
-                        Items: itemStock.accessories
+                        //Items: itemStock.accessories
                     }
                 }
             })

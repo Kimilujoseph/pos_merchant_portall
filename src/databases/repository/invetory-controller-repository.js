@@ -340,6 +340,7 @@ class InventorymanagementRepository {
       const createdTransferHistory =
         await prismaClient.accessorytransferhistory.create({
           data: {
+
             quantity: transferData.quantity,
             status: transferData.status,
             type: transferData.type,
@@ -353,7 +354,7 @@ class InventorymanagementRepository {
               connect: { id: transferData.transferdBy },
             },
             accessories: {
-              connect: { id: transferData.productId },
+              connect: { id: id },
             },
           },
         });

@@ -261,6 +261,7 @@ class AccessoryInventoryRepository {
       await this.createHistory({
         user,
         shopId,
+        quantity: updatedAccessory.availableStock,
         productId: accessoryId,
         type: "update",
       });
@@ -416,7 +417,11 @@ class AccessoryInventoryRepository {
               itemType: true,
             },
           },
-          accessoryfinance: true,
+          Supplier: {
+            select: {
+              name: true
+            }
+          }
         },
       });
       return productFound;

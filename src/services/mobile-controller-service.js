@@ -259,7 +259,7 @@ class MobilemanagementService {
       }
       const validUpdates = validateUpdateInputs(updates);
       const [shopFound, mobileFound] = await Promise.all([
-        this.shop.findShop({ name: "Kahawa 2323" }),
+        this.shop.findShop({ name: "South B" }),
         this.mobile.findItem(mobileId),
       ]);
       if (!shopFound) {
