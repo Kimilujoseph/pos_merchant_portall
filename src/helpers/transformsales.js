@@ -1,16 +1,27 @@
 const transformSales = (rawSale) => {
-  // Base transformation
+  console.log("paginated sales ", rawSale);
+
+  const productDetails = rawSale.productDetails || rawSale.mobiles || rawSale.accessories || {};
+  const categoryDetails = rawSale.categoryDetails || rawSale.categories || {};
+  const sellerDetails = rawSale.sellerDetails || rawSale.actors || {};
+  const shopDetails = rawSale.shopDetails || rawSale.shops || {};
+
   const base = {
+    saleId: rawSale.id,
     soldprice: Number(rawSale.soldPrice),
     netprofit: rawSale.profit,
     commission: rawSale.commission,
-    IMEI: rawSale.mobiles?.IMEI || 0,
-    productcost: Number(
-      rawSale.mobiles?.productCost || rawSale.accessories?.productCost || 0
-    ),
+    commissionpaid: rawSale.commissionPaid,
+    commissionstatus: rawSale.commisssionStatus || "N/A",
+    IMEI: productDetails.IMEI || 0,
+    paymentstatus: rawSale.paymentStatus || productDetails.paymentStatus || "N/A",
+    color: productDetails.color || "N/A",
+    storage: productDetails.storage || "N/A",
+    productcost: Number(productDetails.productCost || 0),
+    supplier: Number(productDetails.supplierId || 0),
     status: rawSale.status || "completed",
-    productmodel: rawSale.categories?.itemModel || "N/A",
-    productname: rawSale.categories?.itemName || "Unknown",
+    productmodel: categoryDetails.itemModel || "N/A",
+    productname: categoryDetails.itemName || "Unknown",
     totalnetprice: Number(rawSale.soldPrice),
     totalsoldunits: rawSale.quantity || 1,
     totaltransaction: 1,
@@ -20,26 +31,25 @@ const transformSales = (rawSale) => {
       shopId: rawSale.shopID || null,
     },
     financeDetails: {
-      financeStatus: rawSale.financeStatus || "N/A",
-      financeAmount: Number(rawSale.financeAmount) || 0,
-      financer: rawSale.financer || "",
+      financeStatus: rawSale.financeDetails?.financeStatus || rawSale.financeStatus || "N/A",
+      financeAmount: Number(rawSale.financeDetails?.financeAmount || rawSale.financeAmount) || 0,
+      financer: rawSale.financeDetails?.financer || rawSale.Financer?.name || "",
     },
     CategoryId: rawSale.categoryId || null,
     createdAt: rawSale.createdAt?.toISOString() || new Date().toISOString(),
-    batchNumber:
-      rawSale.mobiles?.batchNumber || rawSale.accessories?.batchNumber || "N/A",
-    category: rawSale.categories?.itemType?.toLowerCase() || "Uncategorized",
-    sellername: rawSale.actors?.name || "Unknown Seller",
-    shopname: rawSale.shops?.shopName || "Unknown Shop",
+    batchNumber: productDetails.batchNumber || "N/A",
+    category: categoryDetails.itemType?.toLowerCase() || "Uncategorized",
+    sellername: sellerDetails.name || "Unknown Seller",
+    shopname: shopDetails.shopName || "Unknown Shop",
+    paymentDetails: rawSale.Payment || {},
   };
 
-  if (rawSale.mobiles) {
-    base.productmodel = rawSale.mobiles.phoneType || base.productmodel;
+  if (rawSale.mobiles || categoryDetails.itemType?.toLowerCase() === 'mobiles') {
+    base.productmodel = productDetails.phoneType || base.productmodel;
     base.category = "mobiles";
   }
 
-
-  if (rawSale.accessories) {
+  if (rawSale.accessories || categoryDetails.itemType?.toLowerCase() === 'accessories') {
     base.category = "accessories";
   }
 

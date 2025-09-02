@@ -108,16 +108,72 @@ class Sales {
       const includeClause =
         salesTable === "mobilesales"
           ? {
-            mobiles: true,
-            shops: true,
-            categories: true,
-            actors: true,
+            mobiles: {
+              select: {
+                IMEI: true,
+                productCost: true,
+                batchNumber: true,
+                phoneType: true,
+                supplierId: true,
+                storage: true,
+                color: true,
+                paymentStatus: true,
+              },
+            },
+            shops: {
+              select: {
+                id: true,
+                shopName: true
+              }
+            },
+            categories: {
+              select: {
+                itemName: true,
+                itemModel: true,
+                itemType: true,
+                brand: true
+              }
+            },
+            actors: {
+              select: {
+                id: true,
+                name: true
+              }
+            },
+            Financer: {
+              select: {
+                name: true
+              }
+            },
+            Payment: true
           }
           : {
             accessories: true,
-            shops: true,
-            categories: true,
-            actors: true,
+            shops: {
+              select: {
+                shopName: true
+              }
+            },
+            categories: {
+              select: {
+                itemName: true,
+                itemModel: true,
+                itemType: true,
+                brand: true
+              }
+            },
+            actors: {
+              select: {
+                id: true,
+                name: true
+              }
+            },
+            Financer: {
+              select: {
+                name: true
+              },
+            },
+            Payment: true
           };
       const [results, totals] = await Promise.all([
         salesModel.findMany({
@@ -138,6 +194,7 @@ class Sales {
           _count: true,
         }),
       ]);
+      //console.log("reult", results)
       const transformSale = (sale) => ({
         ...sale,
         productDetails:
@@ -145,7 +202,11 @@ class Sales {
         shopDetails: sale.shops,
         sellerDetails: sale.actors,
         categoryDetails: sale.categories,
-        financeDetails: this.mapFinanceDetails(sale),
+        financeDetails: {
+          financeStatus: sale.financeStatus || "N/A",
+          financeAmount: sale.financeAmount || 0,
+          financer: sale.Financer.name || "N/A",
+        },
       });
       return {
         data: results.map(transformSale),
@@ -187,9 +248,10 @@ class Sales {
     return {
       financeStatus: sale.financeStatus || "N/A",
       financeAmount: sale.financeAmount || 0,
-      financer: sale.financer || "N/A",
+      financer: sale.Financer.name || "N/A",
     };
   }
+
   async findUserSales({ salesTable, userId, startDate, endDate, page, limit, financerId, financeStatus }) {
     try {
       const salesModel = prisma[salesTable];
@@ -292,6 +354,7 @@ class Sales {
   }
 
   transformUserSale(sale, tableName) {
+
     // Common properties
     const base = {
       soldprice: Number(sale.soldPrice),

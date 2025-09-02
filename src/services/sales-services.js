@@ -209,6 +209,8 @@ class salesmanagment {
         this.sales.findSales({ ...todaySalesDetails, salesTable: 'accessorysales' }),
       ]);
 
+      //console.log(mobileSales)
+
       todaysTotals = {
         totalRevenue: (mobileSales.totals.totalSales || 0) + (accessorySales.totals.totalSales || 0),
         grossProfit: (mobileSales.totals.totalProfit || 0) + (accessorySales.totals.totalProfit || 0),
