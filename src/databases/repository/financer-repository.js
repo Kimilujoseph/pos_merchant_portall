@@ -17,6 +17,7 @@ class FinancerRepository {
       });
       return financer;
     } catch (err) {
+      console.log(err)
       if (err.code === "P2002") {
         throw new APIError(
           "Duplicate Key Error",

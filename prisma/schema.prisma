@@ -83,7 +83,7 @@ model Financer {
   email          String?          @unique
   address        String?
   createdAt      DateTime         @default(now())
-  updatedAt      DateTime
+  updatedAt      DateTime         @default(now()) @db.DateTime(0)
   accessorysales accessorysales[]
   mobilesales    mobilesales[]
 }

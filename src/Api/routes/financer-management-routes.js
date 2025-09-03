@@ -11,8 +11,8 @@ import {
 const router = express.Router();
 
 router.post("/create", verifyUser, createFinancer);
-router.get("/financer/:id", verifyUser, getFinancerById);
-router.get("/financer", verifyUser, getAllFinancers);
+router.get("/get/:id", verifyUser, getFinancerById);
+router.get("/all", verifyUser, getAllFinancers);
 router.put("/financer/:id", verifyUser, updateFinancer);
 router.delete("/financer/:id", verifyUser, deleteFinancer);
 
