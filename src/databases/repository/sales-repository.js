@@ -272,16 +272,72 @@ class Sales {
       const includeClause =
         salesTable === "mobilesales"
           ? {
-            mobiles: true,
-            shops: true,
-            categories: true,
-            actors: true,
+            mobiles: {
+              select: {
+                IMEI: true,
+                productCost: true,
+                batchNumber: true,
+                phoneType: true,
+                supplierId: true,
+                storage: true,
+                color: true,
+                paymentStatus: true,
+              },
+            },
+            shops: {
+              select: {
+                id: true,
+                shopName: true
+              }
+            },
+            categories: {
+              select: {
+                itemName: true,
+                itemModel: true,
+                itemType: true,
+                brand: true
+              }
+            },
+            actors: {
+              select: {
+                id: true,
+                name: true
+              }
+            },
+            Financer: {
+              select: {
+                name: true
+              }
+            },
+            Payment: true
           }
           : {
             accessories: true,
-            shops: true,
-            categories: true,
-            actors: true,
+            shops: {
+              select: {
+                shopName: true
+              }
+            },
+            categories: {
+              select: {
+                itemName: true,
+                itemModel: true,
+                itemType: true,
+                brand: true
+              }
+            },
+            actors: {
+              select: {
+                id: true,
+                name: true
+              }
+            },
+            Financer: {
+              select: {
+                name: true
+              },
+            },
+            Payment: true
           };
 
       const results = await salesModel.findMany({
@@ -309,7 +365,11 @@ class Sales {
         shopDetails: sale.shops,
         sellerDetails: sale.actors,
         categoryDetails: sale.categories,
-        financeDetails: this.mapFinanceDetails(sale),
+        financeDetails: {
+          financeStatus: sale.financeStatus || "N/A",
+          financeAmount: sale.financeAmount || 0,
+          financer: sale.Financer.name || "N/A",
+        },
       });
 
       return {
@@ -323,6 +383,7 @@ class Sales {
         },
       };
     } catch (err) {
+      console.log("Error retrieving user sales:", err);
       throw new APIError(
         "Database error",
         STATUS_CODE.INTERNAL_ERROR,

@@ -278,6 +278,7 @@ class salesmanagment {
     try {
       return await this._getHybridSalesData(filters);
     } catch (err) {
+      console.log(err)
       this.handleServiceError(err);
     }
   }
