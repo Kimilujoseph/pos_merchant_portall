@@ -36,15 +36,20 @@ async function backfillSales(salesTable) {
       if (!productDetails) continue; // Skip if product data is missing
 
       const saleDate = new Date(sale.createdAt);
-      saleDate.setHours(0, 0, 0, 0); // Normalize to the start of the day
+      saleDate.setUTCHours(0, 0, 0, 0); // Normalize to the start of the UTC day
 
       const key = `${saleDate.toISOString()}-${sale.productID}-${sale.shopID}-${sale.sellerId}-${sale.financeStatus}-${sale.financerId || null}`;
 
-      const totalRevenue = sale.soldPrice;
-      const totalCostOfGoods = productDetails.productCost * sale.quantity;
+      const quantity = sale.quantity || 0;
+      const soldPrice = Number(sale.soldPrice) || 0;
+      const productCost = Number(productDetails.productCost) || 0;
+      const commission = Number(productDetails.commission) || 0;
+      const financeAmount = Number(sale.financeAmount) || 0;
+
+      const totalRevenue = soldPrice * quantity;
+      const totalCostOfGoods = productCost * quantity;
       const grossProfit = totalRevenue - totalCostOfGoods;
-      const totalCommission = productDetails.commission * sale.quantity;
-      const totalfinanceAmount = sale.financeAmount || 0;
+      const totalCommission = commission * quantity;
 
       if (!analyticsMap.has(key)) {
         analyticsMap.set(key, {
@@ -65,12 +70,12 @@ async function backfillSales(salesTable) {
       }
 
       const current = analyticsMap.get(key);
-      current.totalUnitsSold += sale.quantity;
+      current.totalUnitsSold += quantity;
       current.totalRevenue += totalRevenue;
       current.totalCostOfGoods += totalCostOfGoods;
       current.grossProfit += grossProfit;
       current.totalCommission += totalCommission;
-      current.totalfinanceAmount += totalfinanceAmount;
+      current.totalfinanceAmount += financeAmount;
     }
 
     for (const data of analyticsMap.values()) {

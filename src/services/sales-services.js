@@ -46,11 +46,12 @@ class salesmanagment {
 
     return prisma.$transaction(async (tx) => {
       const allSalesResults = [];
+      const analyticsAggregator = new Map();
 
       for (const sale of bulksales) {
         const { itemType, items, paymentmethod, transactionId, CategoryId } = sale;
 
-        const totalAmount = items.reduce((acc, item) => acc + (item.soldprice * item.soldUnits), 0);
+        const totalAmount = items.reduce((acc, item) => acc + (item.soldprice * 1), 0);
 
         const payment = await tx.payment.create({
           data: {
@@ -68,15 +69,14 @@ class salesmanagment {
           const itemToSell = itemType === 'mobiles'
             ? await tx.mobileItems.findUnique({ where: { id: parseInt(itemId) } })
             : await tx.accessoryItems.findUnique({ where: { id: parseInt(itemId) } });
-          const transferId = itemToSell?.transferId;
 
           if (!itemToSell) {
             throw new APIError("Not Found", STATUS_CODE.NOT_FOUND, "Item not found.");
           }
-          if (itemToSell.status === 'sold') {
+          if (itemToSell.status === 'sold' && itemToSell.quantity === 0) {
             throw new APIError("Bad Request", STATUS_CODE.BAD_REQUEST, "Item has already been sold.");
           }
-
+          const categoryDetails = await tx.categories.findUnique({ where: { id: parseInt(CategoryId) } })
           const productDetails = itemType === 'mobiles'
             ? await tx.mobiles.findUnique({ where: { id: parseInt(productId) } })
             : await tx.accessories.findUnique({ where: { id: parseInt(productId) } });
@@ -104,66 +104,119 @@ class salesmanagment {
             financerId: financeId ? parseInt(financeId) : null,
           };
 
+          //console.log("#$receiving sales Data", saleData)
+
           let createdSale;
           if (itemType === 'mobiles') {
+            const updateId = itemToSell.id;
             createdSale = await tx.mobilesales.create({ data: saleData });
-            await tx.mobileItems.update({
-              where: { id: parseInt(transferId) },
-              data: { status: 'sold' },
+            console.log("sales created", createdSale)
+            await tx.mobileItems.updateMany({
+              where: { id: updateId },
+              data: { status: "sold", quantity: { decrement: soldUnits } },
             });
+
+            await tx.mobiles.update({
+              where: { id: parseInt(itemToSell.mobileID) },
+              data: { stockStatus: "sold" }
+            })
           } else {
+            const updateId = itemToSell.id;
             createdSale = await tx.accessorysales.create({ data: saleData });
+            console.log("sales created", createdSale)
             await tx.accessoryItems.update({
-              where: { id: parseInt(transferId) },
-              data: { status: 'sold', quantity: { decrement: soldUnits } },
+              where: { id: updateId },
+              data: { status: itemToSell.quantity - soldUnits > 0 ? "available" : "sold", quantity: { decrement: soldUnits } },
             });
           }
 
-          // Upsert into DailySalesAnalytics
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
 
-          const analyticsData = {
+          const now = new Date();
+          const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+          const parsedFinanceId = financeId ? parseInt(financeId) : null;
+          const financeIdKey = parsedFinanceId === null ? 'null' : parsedFinanceId;
+          const financeStatusKey = financeStatus === null ? 'null' : financeStatus;
+
+          const analyticsKey = `${today.toISOString()}-${productId}-${shop.id}-${sellerId}-${financeStatusKey}-${financeIdKey}`;
+
+          const currentAnalytics = analyticsAggregator.get(analyticsKey) || {
             date: today,
             productId: parseInt(productId),
             categoryId: parseInt(CategoryId),
             shopId: shop.id,
             sellerId: sellerId,
             financeStatus: financeStatus,
-            financeId: financeId ? parseInt(financeId) : null,
-            totalUnitsSold: soldUnits,
-            totalRevenue: soldprice,
-            totalCostOfGoods: productDetails.productCost * soldUnits,
-            grossProfit: profit,
-            totalCommission: commission,
-            totalFinanceAmount: financeAmount ? parseInt(financeAmount) : 0,
+            financeId: parsedFinanceId,
+            totalUnitsSold: 0,
+            totalRevenue: 0,
+            totalCostOfGoods: 0,
+            grossProfit: 0,
+            totalCommission: 0,
+            totalfinanceAmount: 0,
           };
 
-          await tx.dailySalesAnalytics.upsert({
-            where: {
-              date_productId_shopId_sellerId_financeStatus_financeId: {
-                date: today,
-                productId: parseInt(productId),
-                shopId: shop.id,
-                sellerId: sellerId,
-                financeStatus: financeStatus,
-                financeId: financeId ? parseInt(financeId) : null,
-              },
-            },
-            update: {
-              totalUnitsSold: { increment: soldUnits },
-              totalRevenue: { increment: soldprice },
-              totalCostOfGoods: { increment: productDetails.productCost * soldUnits },
-              grossProfit: { increment: profit },
-              totalCommission: { increment: commission },
-              totalFinanceAmount: { increment: financeAmount ? parseInt(financeAmount) : 0 },
-            },
-            create: analyticsData,
-          });
+          currentAnalytics.totalUnitsSold += soldUnits;
+          currentAnalytics.totalRevenue += soldprice;
+          currentAnalytics.totalCostOfGoods += productDetails.productCost * soldUnits;
+          currentAnalytics.grossProfit += profit;
+          currentAnalytics.totalCommission += commission;
+          currentAnalytics.totalfinanceAmount += financeAmount ? parseInt(financeAmount) : 0;
 
-          allSalesResults.push({ status: 'fulfilled', value: createdSale });
+          analyticsAggregator.set(analyticsKey, currentAnalytics);
+
+          allSalesResults.push({
+            status: 'fulfilled',
+            value: {
+              ...createdSale,
+              sellerName: user.name,
+              customerName: customer.name ? customer.name : "walk-in-customer",
+              customerphoneNumber: customer.phoneNumber ? customer.phoneNumber : "walk-in-customer",
+              shopName: shopName,
+              batchIMEI: productDetails.batchNumber ? productDetails.batchNumber : productDetails,
+              productName: categoryDetails.itemName,
+              productModel: categoryDetails.itemModel,
+              brand: categoryDetails.brand
+            }
+          });
         }
       }
+
+      // Perform a find-then-update/create for each aggregated analytic entry
+      for (const analyticsData of analyticsAggregator.values()) {
+        const existingRecord = await tx.dailySalesAnalytics.findUnique({
+          where: {
+            date_productId_shopId_sellerId_financeStatus_financeId: {
+              date: analyticsData.date,
+              productId: analyticsData.productId,
+              shopId: analyticsData.shopId,
+              sellerId: analyticsData.sellerId,
+              financeStatus: analyticsData.financeStatus,
+              financeId: analyticsData.financeId,
+            },
+          },
+        });
+        if (existingRecord) {
+          // If record exists, update it
+          await tx.dailySalesAnalytics.update({
+            where: {
+              id: existingRecord.id,
+            },
+            data: {
+              totalUnitsSold: { increment: analyticsData.totalUnitsSold },
+              totalRevenue: { increment: analyticsData.totalRevenue },
+              totalCostOfGoods: { increment: analyticsData.totalCostOfGoods },
+              grossProfit: { increment: analyticsData.grossProfit },
+              totalCommission: { increment: analyticsData.totalCommission },
+              totalfinanceAmount: { increment: analyticsData.totalfinanceAmount },
+            },
+          });
+        } else {
+          await tx.dailySalesAnalytics.create({
+            data: analyticsData,
+          });
+        }
+      }
+      console.log(allSalesResults)
       return allSalesResults;
     });
   }

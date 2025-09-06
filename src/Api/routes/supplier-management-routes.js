@@ -11,8 +11,8 @@ import {
 const router = express.Router();
 
 router.post("/create", verifyUser, createSupplier);
-router.get("/supplier/:id", verifyUser, getSupplierById);
-router.get("/supplier", verifyUser, getAllSuppliers);
+router.get("/get/:id", verifyUser, getSupplierById);
+router.get("/all", verifyUser, getAllSuppliers);
 router.put("/update-profile/:id", verifyUser, updateSupplier);
 router.delete("/supplier/:id", verifyUser, deleteSupplier);
 

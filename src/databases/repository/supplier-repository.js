@@ -17,6 +17,7 @@ class SupplierRepository {
       });
       return supplier;
     } catch (err) {
+      console.log("error", err)
       if (err.code === "P2002") {
         throw new APIError(
           "Duplicate Key Error",
@@ -78,6 +79,7 @@ class SupplierRepository {
       });
       return updatedSupplier;
     } catch (err) {
+      console.log(err)
       if (err.code === "P2002") {
         throw new APIError(
           "Duplicate Key Error",

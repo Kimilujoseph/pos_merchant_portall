@@ -157,7 +157,7 @@ model Supplier {
   email       String?       @unique
   address     String?
   createdAt   DateTime      @default(now())
-  updatedAt   DateTime
+  updatedAt   DateTime      @default(now()) @db.DateTime(0)
   accessories accessories[]
   mobiles     mobiles[]
 }
@@ -518,20 +518,20 @@ model shops {
 }
 
 model DailySalesAnalytics {
-  id                 Int      @id @default(autoincrement())
-  date               DateTime @db.Date
+  id                 Int       @id @default(autoincrement())
+  date               DateTime? @db.Date
   productId          Int
   categoryId         Int
   shopId             Int
   sellerId           Int
   financeId          Int?
-  financeStatus      String?  @db.VarChar(50)
-  totalUnitsSold     Int
-  totalRevenue       Decimal  @db.Decimal(12, 2)
-  totalCostOfGoods   Decimal  @db.Decimal(12, 2)
-  grossProfit        Decimal  @db.Decimal(12, 2)
-  totalCommission    Decimal  @db.Decimal(12, 2)
-  totalfinanceAmount Decimal? @db.Decimal(10, 0)
+  financeStatus      String?   @db.VarChar(50)
+  totalUnitsSold     Int?
+  totalRevenue       Decimal?  @db.Decimal(18, 2)
+  totalCostOfGoods   Decimal   @db.Decimal(12, 2)
+  grossProfit        Decimal?  @db.Decimal(18, 2)
+  totalCommission    Decimal?  @db.Decimal(18, 2)
+  totalfinanceAmount Decimal?  @db.Decimal(18, 2)
 
   @@unique([date, productId, shopId, sellerId, financeStatus, financeId], map: "idx_unique_daily_sale")
   @@index([categoryId], map: "idx_categoryId")
