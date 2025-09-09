@@ -35,10 +35,8 @@ class ShopmanagementService {
     }
   }
 
-  async findSpecificShop(shopname) {
+  async findSpecificShop({ name, page, limit, status, itemType }) {
     try {
-      const { name } = shopname;
-
       const shopFound = await this.repository.findShop({ name });
 
       if (!shopFound) {
@@ -48,7 +46,7 @@ class ShopmanagementService {
           "No shop found with the given name"
         );
       }
-      //console.log("shopFOund", shopFound)
+
       const assignedSellers = shopFound.assignment
         .filter((assignment) => assignment.status === "assigned")
         .map((seller) => ({
@@ -61,101 +59,46 @@ class ShopmanagementService {
           toDate: seller.toDate,
           status: seller.status,
         }));
-      console.log(shopFound.assignment);
 
-      const transformAccessory = (item) => ({
-        quantity: item.quantity,
-        status: item.status,
-        productStatus: item.productStatus,
-        transferId: item.transferId,
-        createdAt: item.createdAt,
-        updatedAt: item.updatedAt,
-        accessory: item.id,
-        stock: {
-          id: item.accessoryID,
-          stockStatus: item.accessories.stockStatus,
-          commission: item.accessories.commission,
-          discount: item.accessories.discount,
-          productcost: item.accessories.productCost,
-          batchNumber: item.accessories.batchNumber,
-        },
-        categoryId: {
-          id: item.accessories.categories.id,
-          itemName: item.accessories.categories.itemName,
-          itemModel: item.accessories.categories.itemModel,
-          brand: item.accessories.categories.brand,
-          minPrice: item.accessories.categories.minPrice,
-          maxPrice: item.accessories.categories.maxPrice,
-          itemType: item.accessories.categories.itemType,
-        },
-        quantity: item.quantity,
-      });
+      let mobileItems = { items: [], totalPages: 0, currentPage: page, totalItems: 0 };
+      let accessoryItems = { items: [], totalPages: 0, currentPage: page, totalItems: 0 };
 
-      const transformPhone = (item) => ({
-        quantity: item.quantity,
-        status: item.status,
-        productStatus: item.productStatus,
-        transferId: item.transferId,
-        createdAt: item.createdAt,
-        updatedAt: item.updatedAt,
-        stock: {
-          id: item.mobileID,
-          stockStatus: item.mobiles.stockStatus,
-          commission: item.mobiles.commission,
-          discount: item.mobiles.discount,
-          IMEI: item.mobiles.IMEI,
-          productcost: item.mobiles.productCost,
-        },
-        categoryId: {
-          id: item.mobiles.categories.id,
-          itemName: item.mobiles.categories.itemName,
-          itemModel: item.mobiles.categories.itemModel,
-          brand: item.mobiles.categories.brand,
-          minPrice: item.mobiles.categories.minPrice,
-          maxPrice: item.mobiles.categories.maxPrice,
-          itemType: item.mobiles.categories.itemType,
-        },
-        quantity: item.quantity,
-      });
+      if (itemType === 'mobile' || itemType === 'all' || !itemType) {
+        mobileItems = await this.repository.findSpecificShopItem({
+          name,
+          requestedItem: 'mobileItems',
+          page,
+          limit,
+          status,
+        });
+      }
 
-      const newAccessory = shopFound.accessoryItems
-        .filter(
-          (item) => item.status === "pending" && item.accessoryID !== null
-        )
-        .map(transformAccessory);
-
-      const newPhoneItem = shopFound.mobileItems
-        .filter((item) => item.status === "pending" && item.mobileID !== null)
-        .map(transformPhone);
-
-      const stockItems = shopFound.accessoryItems
-        .filter((item) => item.status === "confirmed" && item.quantity > 0)
-        .map(transformAccessory);
-      console.log("@#", stockItems);
-      const phoneItems = shopFound.mobileItems
-        .filter((item) => item.status === "confirmed" && item.quantity !== 0)
-        .map(transformPhone);
-
-      const lowStockItems = shopFound.accessoryItems
-        .filter((item) => item.quantity < 5 && item.accessoryID !== null)
-        .map(transformAccessory);
+      if (itemType === 'accessory' || itemType === 'all' || !itemType) {
+        accessoryItems = await this.repository.findSpecificShopItem({
+          name,
+          requestedItem: 'accessoryItems',
+          page,
+          limit,
+          status,
+        });
+      }
 
       const filteredShop = {
         _id: shopFound.id.toString(),
         name: shopFound.shopName,
         address: shopFound.address,
         sellers: assignedSellers,
-        newAccessory,
-        newPhoneItem,
-        stockItems,
-        phoneItems,
-        lowStockItems,
+        mobileItems: mobileItems,
+        accessoryItems: accessoryItems,
       };
 
       return {
         filteredShop: filteredShop,
       };
     } catch (error) {
+      if (error instanceof APIError) {
+        throw error;
+      }
       throw new APIError(
         "Internal Server Error",
         STATUS_CODE.INTERNAL_ERROR,
@@ -181,16 +124,16 @@ class ShopmanagementService {
     }
   }
 
-  async findSpecificShopItem({ name, requestedItem, page, limit }) {
+  async findSpecificShopItem({ name, requestedItem, page, limit, status }) {
     try {
       const foundResult = await this.repository.findSpecificShopItem({
         name,
         requestedItem,
         page,
         limit,
+        status
       });
-      const result = foundResult.filter((item) => item.quantity > 0);
-      return result;
+      return foundResult;
     } catch (err) {
       if (err instanceof APIError) {
         throw err;
@@ -359,16 +302,73 @@ class ShopmanagementService {
       );
     }
   }
-  async findproductbysearch(productName, shopName) {
+  async getShopStockOverview({ name }) {
+    try {
+      const { mobileItems, accessoryItems, lowStockMobiles, lowStockAccessories } = await this.repository.getShopStockOverviewData({ name });
+
+      let totalCost = 0;
+      let pendingValue = 0;
+      let confirmedValue = 0;
+      const categoryQuantities = {};
+
+      const processItems = (items, itemType) => {
+        items.forEach(item => {
+          const cost = itemType === 'mobile' ? item.mobiles.productCost : item.accessories.productCost;
+          const category = itemType === 'mobile' ? item.mobiles.categories.itemName : item.accessories.categories.itemName;
+          
+          const itemValue = cost * item.quantity;
+          totalCost += itemValue;
+
+          if (item.status === 'pending') {
+            pendingValue += itemValue;
+          } else if (item.status === 'confirmed') {
+            confirmedValue += itemValue;
+          }
+
+          if (category) {
+            categoryQuantities[category] = (categoryQuantities[category] || 0) + item.quantity;
+          }
+        });
+      };
+
+      processItems(mobileItems, 'mobile');
+      processItems(accessoryItems, 'accessory');
+
+      return {
+        totalStockValue: totalCost,
+        pendingStockValue: pendingValue,
+        confirmedStockValue: confirmedValue,
+        lowStockItems: {
+          mobiles: lowStockMobiles,
+          accessories: lowStockAccessories,
+        },
+        stockByCategory: categoryQuantities,
+      };
+    } catch (err) {
+      if (err instanceof APIError) {
+        throw err;
+      }
+      throw new APIError(
+        "Service Error",
+        STATUS_CODE.INTERNAL_ERROR,
+        "Internal server error"
+      );
+    }
+  }
+
+  async findproductbysearch(shopName, productName, page, limit) {
     try {
       const products = await this.repository.searchProductName(
+        productName,
         shopName,
-        productName
+        page,
+        limit
       );
+      // The repository will now return a paginated structure,
+      // so the check for empty items should be done on the items array inside.
       if (
-        !products.phoneItems.length &&
-        !products.stockItems.length &&
-        !products.matchingImei.length
+        products.phoneItems.items.length === 0 &&
+        products.stockItems.items.length === 0
       ) {
         throw new APIError(
           "No products found",

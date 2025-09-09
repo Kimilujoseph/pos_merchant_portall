@@ -9,6 +9,7 @@ import {
   removeAssignment,
   getAllShops,
   searchproduct,
+  getShopStockOverview,
 } from "../controllers/shop-management-controller.js";
 
 const route = express.Router();
@@ -16,6 +17,7 @@ const route = express.Router();
 route.post("/create-shop", verifyUser, createShop);
 route.get("/all", getAllShops);
 route.get("/:name", getSpecificShop);
+route.get("/:name/overview", verifyUser, getShopStockOverview);
 route.get("/searchproducts/:shopName", searchproduct);
 route.get("/:name/:requestedItem", findSpecificShopItem);
 route.post("/assignment/add", verifyUser, addassignment);

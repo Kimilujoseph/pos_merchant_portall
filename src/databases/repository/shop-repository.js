@@ -83,54 +83,6 @@ class ShopmanagementRepository {
               status: true,
             },
           },
-          mobileItems: {
-            select: {
-              id: true,
-              mobileID: true,
-              shopID: true,
-              status: true,
-              confirmedBy: true,
-              transferId: true,
-              createdAt: true,
-              productStatus: true,
-              quantity: true,
-              updatedAt: true,
-              mobiles: {
-                select: {
-                  categories: true,
-                  IMEI: true,
-                  batchNumber: true,
-                  color: true,
-                  productCost: true,
-                  discount: true,
-                  stockStatus: true,
-                },
-              },
-            },
-          },
-          accessoryItems: {
-            select: {
-              id: true,
-              accessoryID: true,
-              shopID: true,
-              status: true,
-              createdAt: true,
-              quantity: true,
-              productStatus: true,
-              updatedAt: true,
-              transferId: true,
-              confirmedBy: true,
-              accessories: {
-                select: {
-                  categories: true,
-                  productCost: true,
-                  discount: true,
-                  stockStatus: true,
-                  batchNumber: true,
-                },
-              },
-            },
-          },
         },
       });
       return findShop;
@@ -170,7 +122,7 @@ class ShopmanagementRepository {
     }
   }
 
-  async findSpecificShopItem({ name, requestedItem, page = 1, limit = 10 }) {
+  async findSpecificShopItem({ name, requestedItem, page = 1, limit = 10, status }) {
     try {
       const shop = await this.prisma.shops.findFirst({
         where: { shopName: name },
@@ -184,63 +136,73 @@ class ShopmanagementRepository {
           "Shop not found"
         );
       }
+
+      const whereClause = {
+        shopID: shop.id,
+        quantity: { gt: 0 }
+      };
+
+      if (status) {
+        whereClause.status = status;
+      } else {
+        whereClause.status = "confirmed";
+      }
+
       let items = [];
-      if (requestedItem === "phoneItems") {
+      let totalItems = 0;
+      const skip = (page - 1) * limit;
+
+      if (requestedItem === "mobileItems") {
         items = await this.prisma.mobileItems.findMany({
-          where: {
-            shopID: shop.id,
-            status: "confirmed",
-          },
+          where: whereClause,
+          skip: skip,
+          take: limit,
           include: {
             mobiles: {
               select: {
-                itemName: true,
-                brand: true,
-                itemModel: true,
-                minprice: true,
-                maxprice: true,
+                categories: true,
+                IMEI: true,
+                batchNumber: true,
+                color: true,
+                productCost: true,
+                discount: true,
+                stockStatus: true,
               },
             },
           },
         });
-      } else if (requestedItem === "stockItems") {
+        totalItems = await this.prisma.mobileItems.count({ where: whereClause });
+      } else if (requestedItem === "accessoryItems") {
         items = await this.prisma.accessoryItems.findMany({
-          where: {
-            shopID: shop.id,
-            status: "confirmed",
-          },
+          where: whereClause,
+          skip: skip,
+          take: limit,
           include: {
             accessories: {
               select: {
-                itemName: true,
-                brand: true,
-                itemModel: true,
-                minprice: true,
-                maxprice: true,
+                categories: true,
+                productCost: true,
+                discount: true,
+                stockStatus: true,
+                batchNumber: true,
               },
             },
           },
         });
+        totalItems = await this.prisma.accessoryItems.count({ where: whereClause });
       } else {
         throw new APIError(
           "Invalid requested item type",
           STATUS_CODE.BAD_REQUEST,
-          "Invalid item type"
+          "Invalid item type. Should be phoneItems or stockItems"
         );
       }
 
-      items = items.filter(
-        (item) => item.mobiles !== null || item.accessories !== null
-      );
-
-      const startIndex = (page - 1) * limit;
-      const paginatedItems = items.slice(startIndex, startIndex + limit);
-
       return {
-        totalItems: items.length,
-        totalPages: Math.ceil(items.length / limit),
+        totalItems: totalItems,
+        totalPages: Math.ceil(totalItems / limit),
         currentPage: page,
-        items: paginatedItems,
+        items: items,
       };
     } catch (err) {
       if (err instanceof APIError) {
@@ -250,6 +212,76 @@ class ShopmanagementRepository {
         "API Error",
         STATUS_CODE.INTERNAL_ERROR,
         err.message || "Unable to find the shop"
+      );
+    }
+  }
+
+  async getShopStockOverviewData({ name }) {
+    try {
+      const shop = await this.prisma.shops.findFirst({
+        where: { shopName: name },
+        select: { id: true },
+      });
+
+      if (!shop) {
+        throw new APIError(`Shop with name ${name} not found`);
+      }
+
+      const mobileItems = await this.prisma.mobileItems.findMany({
+        where: { shopID: shop.id },
+        select: {
+          quantity: true,
+          status: true,
+          mobiles: {
+            select: {
+              productCost: true,
+              categories: {
+                select: {
+                  itemName: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      const accessoryItems = await this.prisma.accessoryItems.findMany({
+        where: { shopID: shop.id },
+        select: {
+          quantity: true,
+          status: true,
+          accessories: {
+            select: {
+              productCost: true,
+              categories: {
+                select: {
+                  itemName: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      const lowStockMobiles = await this.prisma.mobileItems.findMany({
+        where: { shopID: shop.id, status: 'confirmed', quantity: { lt: 0 } },
+        include: { mobiles: { include: { categories: true } } },
+      });
+
+      const lowStockAccessories = await this.prisma.accessoryItems.findMany({
+        where: { shopID: shop.id, status: 'confirmed', quantity: { lt: 5 } },
+        include: { accessories: { include: { categories: true } } },
+      });
+
+      return { mobileItems, accessoryItems, lowStockMobiles, lowStockAccessories };
+    } catch (err) {
+      if (err instanceof APIError) {
+        throw err;
+      }
+      throw new APIError(
+        "Error fetching stock overview data",
+        STATUS_CODE.INTERNAL_ERROR,
+        err.message
       );
     }
   }
@@ -354,9 +386,7 @@ class ShopmanagementRepository {
     }
   }
 
-  async searchProductName(productName, shopName) {
-    console.log("#@#", shopName);
-
+  async searchProductName(productName, shopName, page = 1, limit = 10) {
     try {
       const shop = await this.prisma.shops.findFirst({
         where: { shopName: shopName },
@@ -367,103 +397,77 @@ class ShopmanagementRepository {
         throw new APIError(`Shop with name ${shopName} not found`);
       }
 
-      const searchTerm = productName.toLowerCase();
+      const searchTerm = productName ? productName.toLowerCase() : "";
+      const skip = (parseInt(page) - 1) * parseInt(limit);
+
+      const mobileWhere = {
+        shopID: shop.id,
+        mobiles: {
+          OR: [
+            { categories: { itemName: { contains: searchTerm, } } },
+            { categories: { itemModel: { contains: searchTerm } } },
+            { categories: { brand: { contains: searchTerm } } },
+            { IMEI: { contains: searchTerm } },
+          ],
+        },
+      };
+
+      const accessoryWhere = {
+        shopID: shop.id,
+        accessories: {
+          categories: {
+            OR: [
+              { itemName: { contains: searchTerm } },
+              { itemModel: { contains: searchTerm } },
+              { brand: { contains: searchTerm } },
+            ],
+          },
+        },
+      };
 
       const phoneItems = await this.prisma.mobileItems.findMany({
-        where: {
-          shopID: shop.id,
+        where: mobileWhere,
+        skip: skip,
+        take: parseInt(limit),
+        include: {
           mobiles: {
-            categories: {
-              OR: [
-                { itemName: { contains: searchTerm } },
-                { itemModel: { contains: searchTerm } },
-                { brand: { contains: searchTerm } },
-              ],
-            },
-          },
-        },
-        select: {
-          mobiles: {
-            select: {
-              categories: {
-                select: {
-                  itemName: true,
-                  itemModel: true,
-                  brand: true,
-                },
-              },
-              IMEI: true,
-              color: true,
-              stockStatus: true,
-              commission: true,
+            include: {
+              categories: true,
             },
           },
         },
       });
 
-      const matchingImei = await this.prisma.mobileItems.findMany({
-        where: {
-          shopID: shop.id,
-          mobiles: {
-            OR: [{ IMEI: { contains: searchTerm } }],
-          },
-        },
-        select: {
-          mobiles: {
-            select: {
-              categories: {
-                select: {
-                  itemName: true,
-                  itemModel: true,
-                  brand: true,
-                },
-              },
-              IMEI: true,
-              color: true,
-              stockStatus: true,
-              commission: true,
-            },
-          },
-        },
-      });
+      const totalPhones = await this.prisma.mobileItems.count({ where: mobileWhere });
 
       const stockItems = await this.prisma.accessoryItems.findMany({
-        where: {
-          shopID: shop.id,
+        where: accessoryWhere,
+        skip: skip,
+        take: parseInt(limit),
+        include: {
           accessories: {
-            categories: {
-              OR: [
-                { itemName: { contains: searchTerm } },
-                { itemModel: { contains: searchTerm } },
-                { brand: { contains: searchTerm } },
-              ],
-            },
-          },
-        },
-        select: {
-          accessories: {
-            select: {
-              categories: {
-                select: {
-                  itemName: true,
-                  itemModel: true,
-                  brand: true,
-                },
-              },
-            },
-            select: {
-              batchNumber: true,
-              stockStatus: true,
-              commission: true,
+            include: {
+              categories: true,
             },
           },
         },
       });
 
+      const totalAccessories = await this.prisma.accessoryItems.count({ where: accessoryWhere });
+
       return {
-        phoneItems,
-        stockItems,
-        matchingImei,
+        phoneItems: {
+          items: phoneItems,
+          totalItems: totalPhones,
+          totalPages: Math.ceil(totalPhones / limit),
+          currentPage: parseInt(page),
+        },
+        stockItems: {
+          items: stockItems,
+          totalItems: totalAccessories,
+          totalPages: Math.ceil(totalAccessories / limit),
+          currentPage: parseInt(page),
+        },
       };
     } catch (err) {
       console.log("erroror", err);

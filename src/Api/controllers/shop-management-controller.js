@@ -6,8 +6,14 @@ const ShopManagementSystem = new ShopmanagementService();
 const getSpecificShop = async (req, res, next) => {
   try {
     const name = req.params.name;
+    const { page, limit, status, itemType } = req.query;
+
     const getSpecificShop = await ShopManagementSystem.findSpecificShop({
       name,
+      page: parseInt(page) || 1,
+      limit: parseInt(limit) || 10,
+      status,
+      itemType
     });
 
     return res.status(200).json({ message: "success", shop: getSpecificShop });
@@ -65,13 +71,14 @@ const findSpecificShopItem = async (req, res, next) => {
   try {
     const name = req.params.name;
     const requestedItem = req.params.requestedItem;
-    const { page = 1, limit = 5 } = req.query;
+    const { page = 1, limit = 5, status } = req.query;
 
     const result = await ShopManagementSystem.findSpecificShopItem({
       name,
       requestedItem,
       page: parseInt(page),
       limit: parseInt(limit),
+      status
     });
     console.log(result);
     return res.status(200).json({ message: result });
@@ -195,22 +202,21 @@ const removeAssignment = async (req, res) => {
 const searchproduct = async (req, res) => {
   try {
     const shopName = req.params.shopName;
-    const productName = req.query.productName;
+    const { productName, page, limit } = req.query;
     const search = await ShopManagementSystem.findproductbysearch(
       shopName,
-      productName
+      productName,
+      page,
+      limit
     );
 
-    const { phoneItems, stockItems } = search;
-    if (phoneItems.length > 0) {
-      return res
-        .status(200)
-        .json({ message: phoneItems, product: "phone", error: false });
-    } else {
-      return res
-        .status(200)
-        .json({ message: stockItems, product: "accessory", error: false });
-    }
+    return res
+      .status(200)
+      .json({
+        message: "Search successful",
+        products: search,
+        error: false
+      });
   } catch (err) {
     if (err instanceof APIError) {
       return res
@@ -223,6 +229,23 @@ const searchproduct = async (req, res) => {
     }
   }
 };
+const getShopStockOverview = async (req, res, next) => {
+  try {
+    const user = req.user;
+    if (user.role !== "manager" && user.role !== "superuser" && user.role !== "seller") {
+      return res.status(403).json({ message: "unauthorised", error: true });
+    }
+    const name = req.params.name;
+    const overview = await ShopManagementSystem.getShopStockOverview({ name });
+    return res.status(200).json({ message: "success", overview });
+  } catch (err) {
+    if (err instanceof APIError) {
+      return res.status(err.statusCode).json({ message: err.message });
+    } else {
+      return res.status(500).json({ message: "Internal Server Error" });
+    }
+  }
+};
 export {
   getSpecificShop,
   getAllShops,
@@ -232,4 +255,5 @@ export {
   addassignment,
   removeAssignment,
   searchproduct,
+  getShopStockOverview,
 };
