@@ -188,6 +188,7 @@ const confirmAccessoryArrival = async (req, res, next) => {
       error: false,
     });
   } catch (err) {
+
     next(err);
   }
 };

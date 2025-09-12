@@ -38,7 +38,7 @@ async function backfillSales(salesTable) {
       const saleDate = new Date(sale.createdAt);
       saleDate.setUTCHours(0, 0, 0, 0); // Normalize to the start of the UTC day
 
-      const key = `${saleDate.toISOString()}-${sale.productID}-${sale.shopID}-${sale.sellerId}-${sale.financeStatus}-${sale.financerId || null}`;
+      const key = `${saleDate.toISOString()}-${sale.shopID}-${sale.sellerId}-${sale.financeStatus}-${sale.financerId || null}`;
 
       const quantity = sale.quantity || 0;
       const soldPrice = Number(sale.soldPrice) || 0;
@@ -54,7 +54,6 @@ async function backfillSales(salesTable) {
       if (!analyticsMap.has(key)) {
         analyticsMap.set(key, {
           date: saleDate,
-          productId: sale.productID,
           categoryId: sale.categoryId,
           shopId: sale.shopID,
           sellerId: sale.sellerId,
@@ -81,9 +80,9 @@ async function backfillSales(salesTable) {
     for (const data of analyticsMap.values()) {
       await prisma.dailySalesAnalytics.upsert({
         where: {
-          date_productId_shopId_sellerId_financeStatus_financeId: {
+          date_categoryId_shopId_sellerId_financeId_financeStatus: {
             date: data.date,
-            productId: data.productId,
+            categoryId: data.categoryId,
             shopId: data.shopId,
             sellerId: data.sellerId,
             financeStatus: data.financeStatus,

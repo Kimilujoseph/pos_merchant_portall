@@ -48,13 +48,15 @@ class ConfirmAccessorymanagementService {
       }
 
       await prisma.$transaction(async (tx) => {
-        let [accessoryProduct, shopFound] = await Promise.all([
+        let [accessoryProduct, shopAccessoryItem, shopFound] = await Promise.all([
           this.repository.inventory.findProductById(stockId, tx),
+          this.repository.inventory.findAccessoryItemProduct(accessoryItemId, tx),
           this.repository.shop.findShop({ name: shopname }, tx),
         ]);
 
         this.validationProcess(accessoryProduct, shopFound, parsedUserId);
         const newAccessory = this.findTheAccessory(
+          shopAccessoryItem,
           shopFound,
           parsedTransferId,
           parsedQuantity
@@ -70,6 +72,7 @@ class ConfirmAccessorymanagementService {
         );
       });
     } catch (err) {
+      console.log("error", err)
       if (err instanceof APIError) {
         throw err;
       }
@@ -110,10 +113,8 @@ class ConfirmAccessorymanagementService {
     }
   }
 
-  findTheAccessory(shopFound, parsedTransferId, quantity) {
-    const newAccessory = shopFound.accessoryItems.find((item) => {
-      return item.accessoryID !== null && item.transferId === parsedTransferId;
-    });
+  findTheAccessory(newAccessory, shopFound, parsedTransferId, quantity) {
+
     if (!newAccessory) {
       throw new APIError(
         "not found",
@@ -121,13 +122,14 @@ class ConfirmAccessorymanagementService {
         " NEW ACCESSORY  NOT FOUND"
       );
     }
-    if (newAccessory.status === "confirmed") {
+    if (newAccessory.status === "confirmed" && newAccessory.shopID !== shopFound.id && newAccessory.transferId !== parsedTransferId) {
       throw new APIError(
         "Bad Request",
         STATUS_CODE.BAD_REQUEST,
-        "Accessory has already been confirmed."
+        "Accessory product is not available for confirmation."
       );
     }
+
     if (newAccessory.quantity < quantity) {
       throw new APIError(
         "Bad Request",

@@ -1,10 +1,13 @@
 // databases/repository/invetory-controller-repository.js
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+//import { PrismaClient } from "@prisma/client";
+import prisma from "../client.js"
+//const prisma = new PrismaClient();
 import { APIError, STATUS_CODE } from "../../Utils/app-error.js";
 
 class InventorymanagementRepository {
+  constructor() {
+    this.prisma = prisma
+  }
   async createAccesoryProduct(accessoryDetails, user, shopId) {
     try {
       const newAccessory = await this.createnewAccessoryStock(accessoryDetails);
@@ -23,6 +26,23 @@ class InventorymanagementRepository {
       );
     }
   }
+
+  async findAccessoryItemProduct(accessoryId, tx) {
+    try {
+      const prismaClient = tx || this.prisma
+      const accessoryItem = await prismaClient.accessoryItems.findUnique({
+         where:{id:accessoryId}
+      })
+      return accessoryItem
+    }
+    catch (err) {
+      throw new APIError(
+        "finding the uniques accessory Item",
+        STATUS_CODE.INTERNAL_ERROR,
+        "Internal server error"
+      )
+    }
+  }
   async createnewAccessoryStock(accessoryDetails) {
     try {
       const {
@@ -37,7 +57,7 @@ class InventorymanagementRepository {
         stockStatus,
         batchNumber,
       } = accessoryDetails;
-      const newAccessory = await prisma.accessories.create({
+      const newAccessory = await this.prisma.accessories.create({
         data: {
           CategoryId: CategoryId,
           batchNumber: batchNumber,
@@ -69,7 +89,7 @@ class InventorymanagementRepository {
   }
   async createHistory({ productId, user, type, shopId, quantity }) {
     try {
-      const createHistory = await prisma.accessoryHistory.create({
+      const createHistory = await this.prisma.accessoryHistory.create({
         data: {
           productID: productId,
           type: type,
@@ -91,7 +111,7 @@ class InventorymanagementRepository {
   //update the sales of the accessory produtct
   async updateSalesAccessoryStock({ id, quantity, shopId, sellerId }) {
     try {
-      const updatedSalesoftheAccessory = await prisma.accessoryHistory.create({
+      const updatedSalesoftheAccessory = await this.prisma.accessoryHistory.create({
         data: {
           productID: id,
           quantity: quantity,
@@ -114,7 +134,7 @@ class InventorymanagementRepository {
   async updatetheAccessoryStock({ id, availableStock }) {
     try {
       //we update the stock available
-      const updateStock = await prisma.accessories.update({
+      const updateStock = await this.prisma.accessories.update({
         where: {
           id: id,
         },
@@ -165,7 +185,7 @@ class InventorymanagementRepository {
   }
   async findAvailableStockInShop(productId) {
     try {
-      const availableStock = await prisma.accessoryItems.findMany({
+      const availableStock = await this.prisma.accessoryItems.findMany({
         where: {
           accessoryID: productId,
         },
@@ -190,7 +210,7 @@ class InventorymanagementRepository {
 
   async findAllStockAcessoryAvailable(page, limit) {
     try {
-      const stockAvailable = await prisma.accessories.findMany({
+      const stockAvailable = await this.prisma.accessories.findMany({
         skip: (page - 1) * limit,
         take: limit,
         orderBy: {
@@ -223,7 +243,7 @@ class InventorymanagementRepository {
       });
 
       // Get the total count of available stock
-      const itemsAvailable = await prisma.accessories.findMany({
+      const itemsAvailable = await this.prisma.accessories.findMany({
         where: {
           stockStatus: "available",
         },
@@ -246,7 +266,7 @@ class InventorymanagementRepository {
   async capturespecificproductfortransferhistory({ id, page, limit }) {
     try {
       const productId = parseInt(id, 10);
-      const productFound = await prisma.accessorytransferhistory.findMany({
+      const productFound = await this.prisma.accessorytransferhistory.findMany({
         where: {
           productID: productId,
         },
@@ -293,7 +313,7 @@ class InventorymanagementRepository {
   async capturespecificproductforhistory({ id, page, limit }) {
     try {
       const productId = parseInt(id, 10);
-      const productHistoryFound = await prisma.accessoryHistory.findMany({
+      const productHistoryFound = await this.prisma.accessoryHistory.findMany({
         where: {
           productID: productId,
         },
@@ -335,7 +355,7 @@ class InventorymanagementRepository {
   }
 
   async createTransferHistory(id, transferData, tx) {
-    const prismaClient = tx || prisma;
+    const prismaClient = tx || this.prisma;
     try {
       const createdTransferHistory =
         await prismaClient.accessorytransferhistory.create({
@@ -370,7 +390,7 @@ class InventorymanagementRepository {
   }
 
   async updateStockQuantity(productId, quantity, tx) {
-    const prismaClient = tx || prisma;
+    const prismaClient = tx || this.prisma;
     try {
       const updateQuantity = await prismaClient.accessories.update({
         where: {
@@ -392,7 +412,7 @@ class InventorymanagementRepository {
     }
   }
   async updateStockQuantityInAshop(id, quatity, tx) {
-    const prismaClient = tx || prisma;
+    const prismaClient = tx || this.prisma;
     try {
       const updateQuantity = await prismaClient.accessoryItems.update({
         where: {
@@ -413,7 +433,7 @@ class InventorymanagementRepository {
     }
   }
   async updateTransferHistory(id, updates, tx) {
-    const prismaClient = tx || prisma;
+    const prismaClient = tx || this.prisma;
     try {
       const updatedTransferHistory =
         await prismaClient.accessorytransferhistory.update({
@@ -435,7 +455,7 @@ class InventorymanagementRepository {
     try {
       const lowercaseSearchItem = searchItem.toLowerCase();
 
-      const batchNumberMatches = await prisma.accessories.findMany({
+      const batchNumberMatches = await this.prisma.accessories.findMany({
         where: {
           batchNumber: {
             contains: lowercaseSearchItem,
@@ -523,7 +543,7 @@ class InventorymanagementRepository {
 
   async updateProductById(id, updates) {
     try {
-      const updatedProduct = await prisma.accessories.update({
+      const updatedProduct = await this.prisma.accessories.update({
         where: { id },
         data: {
           ...updates,
@@ -540,7 +560,7 @@ class InventorymanagementRepository {
 
   async updateAccessoryItemStatusByTransferId(transferId, status) {
     try {
-      return await prisma.accessoryItems.update({
+      return await this.prisma.accessoryItems.update({
         where: {
           id: transferId,
         },

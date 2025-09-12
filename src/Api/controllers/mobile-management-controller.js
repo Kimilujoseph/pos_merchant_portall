@@ -178,12 +178,11 @@ const confirmphonearrival = async (req, res, next) => {
     let userId;
     const { shopname, productId, transferId, quantity } = req.body;
     const user = req.user;
-    console.log("confirmphonearrival - req.body:", req.body);
-    console.log("confirmphonearrival - user:", user);
+
     const stockId = parseInt(productId, 10);
     const transferID = parseInt(transferId, 10);
     userId = parseInt(user.id, 10);
-    console.log("confirmphonearrival - parsed values:", { userId, shopname, stockId, quantity, transferID });
+
     const updateproductTransfer =
       await inventoryManagementSystem.confirmDistribution({
         userId,
@@ -192,7 +191,7 @@ const confirmphonearrival = async (req, res, next) => {
         quantity,
         transferID,
       });
-    console.log("confirmphonearrival - updateproductTransfer result:", updateproductTransfer);
+
 
     return res.status(200).json({
       messsage: "successfully confirmed arrival",

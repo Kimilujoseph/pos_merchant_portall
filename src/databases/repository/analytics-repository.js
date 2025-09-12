@@ -75,7 +75,7 @@ class AnalyticsRepository {
       }
 
       const results = await prisma.dailySalesAnalytics.groupBy({
-        by: ['productId'],
+        by: ['categoryId'],
         where: whereClause,
         _sum: {
           grossProfit: true,

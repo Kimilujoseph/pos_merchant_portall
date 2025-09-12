@@ -141,7 +141,6 @@ class salesmanagment {
 
           const currentAnalytics = analyticsAggregator.get(analyticsKey) || {
             date: today,
-            productId: parseInt(productId),
             categoryId: parseInt(CategoryId),
             shopId: shop.id,
             sellerId: sellerId,
@@ -185,9 +184,8 @@ class salesmanagment {
       for (const analyticsData of analyticsAggregator.values()) {
         const existingRecord = await tx.dailySalesAnalytics.findUnique({
           where: {
-            date_productId_shopId_sellerId_financeStatus_financeId: {
+            date_categoryId_shopId_sellerId_financeId_financeStatus: {
               date: analyticsData.date,
-              productId: analyticsData.productId,
               shopId: analyticsData.shopId,
               sellerId: analyticsData.sellerId,
               financeStatus: analyticsData.financeStatus,

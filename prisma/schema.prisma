@@ -520,7 +520,6 @@ model shops {
 model DailySalesAnalytics {
   id                 Int       @id @default(autoincrement())
   date               DateTime? @db.Date
-  productId          Int
   categoryId         Int
   shopId             Int
   sellerId           Int
@@ -533,10 +532,9 @@ model DailySalesAnalytics {
   totalCommission    Decimal?  @db.Decimal(18, 2)
   totalfinanceAmount Decimal?  @db.Decimal(18, 2)
 
-  @@unique([date, productId, shopId, sellerId, financeStatus, financeId], map: "idx_unique_daily_sale")
+  @@unique([date, categoryId, shopId, sellerId, financeId, financeStatus], map: "idx_unique_daily_sale")
   @@index([categoryId], map: "idx_categoryId")
   @@index([date], map: "idx_date")
-  @@index([productId], map: "idx_productId")
   @@index([sellerId], map: "idx_sellerId")
   @@index([shopId], map: "idx_shopId")
 }

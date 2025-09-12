@@ -11,32 +11,28 @@ class AnalyticsService {
         this.salesRepository = new Sales();
     }
 
+
+
     async getTopProductsAnalytics(options) {
         try {
             const topProductsData = await this.repository.getTopProducts(options);
 
-            const productIds = topProductsData.map(p => p.productId);
+            const categoryIds = topProductsData.map(p => p.categoryId);
 
-            if (productIds.length === 0) {
+            if (categoryIds.length === 0) {
                 return [];
             }
+            const categoryDetails = new Map()
 
-            const mobiles = await prisma.mobiles.findMany({
-                where: { id: { in: productIds } },
-                select: { id: true, categories: { select: { itemName: true, brand: true } } },
-            });
+            const categories = await prisma.categories.findMany({
+                where: { id: { in: categoryIds } }
+            })
 
-            const accessories = await prisma.accessories.findMany({
-                where: { id: { in: productIds } },
-                select: { id: true, categories: { select: { itemName: true, brand: true } } },
-            });
-
-            const productDetailsMap = new Map();
-            mobiles.forEach(p => productDetailsMap.set(p.id, { name: p.categories.itemName, brand: p.categories.brand }));
-            accessories.forEach(p => productDetailsMap.set(p.id, { name: p.categories.itemName, brand: p.categories.brand }));
+            categories.forEach(p => categoryDetails.set(p.id, { name: p.itemName, brand: p.brand }))
 
             const enrichedData = topProductsData.map(p => {
-                const details = productDetailsMap.get(p.productId);
+                const details = categoryDetails.get(p.categoryId);
+                console.log("categories@@@@@@@@@@@", details)
                 return {
                     productId: p.productId,
                     productName: details ? `${details.brand} ${details.name}` : 'Unknown',
@@ -48,6 +44,7 @@ class AnalyticsService {
 
             return enrichedData;
         } catch (err) {
+            console.log("@#@@#", err)
             if (err instanceof APIError) {
                 throw err;
             }
@@ -58,6 +55,8 @@ class AnalyticsService {
             );
         }
     }
+
+
 
     async getShopPerformanceSummary(options) {
         try {
@@ -105,7 +104,7 @@ class AnalyticsService {
     async getSalesByStatus(options) {
         try {
             const summaryData = await this.repository.getSalesByStatus(options);
-            
+
             const enrichedData = summaryData.map(s => {
                 return {
                     financeStatus: s.financeStatus,
