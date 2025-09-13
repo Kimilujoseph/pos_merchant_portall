@@ -123,10 +123,10 @@ class salesmanagment {
           } else {
             const updateId = itemToSell.id;
             createdSale = await tx.accessorysales.create({ data: saleData });
-            console.log("sales created", createdSale)
+
             await tx.accessoryItems.update({
               where: { id: updateId },
-              data: { status: itemToSell.quantity - soldUnits > 0 ? "available" : "sold", quantity: { decrement: soldUnits } },
+              data: { status: itemToSell.quantity - soldUnits > 0 ? "confirmed" : "sold", quantity: { decrement: soldUnits } },
             });
           }
 
@@ -137,7 +137,7 @@ class salesmanagment {
           const financeIdKey = parsedFinanceId === null ? 'null' : parsedFinanceId;
           const financeStatusKey = financeStatus === null ? 'null' : financeStatus;
 
-          const analyticsKey = `${today.toISOString()}-${productId}-${shop.id}-${sellerId}-${financeStatusKey}-${financeIdKey}`;
+          const analyticsKey = `${today.toISOString()}-${CategoryId}-${shop.id}-${sellerId}-${financeStatusKey}-${financeIdKey}`;
 
           const currentAnalytics = analyticsAggregator.get(analyticsKey) || {
             date: today,
@@ -186,6 +186,7 @@ class salesmanagment {
           where: {
             date_categoryId_shopId_sellerId_financeId_financeStatus: {
               date: analyticsData.date,
+              categoryId: analyticsData.categoryId,
               shopId: analyticsData.shopId,
               sellerId: analyticsData.sellerId,
               financeStatus: analyticsData.financeStatus,
