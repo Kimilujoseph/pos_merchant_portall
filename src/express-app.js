@@ -61,6 +61,11 @@ sessionStore.on("error", function (error) {
 });
 
 const app = express();
+app.set('trust proxy', true);
+app.use(express.json());
+app.use(cors());
+app.use(express.static(__dirname + '/public'));
+
 
 const App = async (app) => {
   app.use(express.json());

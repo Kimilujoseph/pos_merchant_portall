@@ -31,13 +31,35 @@ class InventorymanagementRepository {
     try {
       const prismaClient = tx || this.prisma
       const accessoryItem = await prismaClient.accessoryItems.findUnique({
-         where:{id:accessoryId}
+        where: { id: accessoryId }
       })
       return accessoryItem
     }
     catch (err) {
       throw new APIError(
         "finding the uniques accessory Item",
+        STATUS_CODE.INTERNAL_ERROR,
+        "Internal server error"
+      )
+    }
+  }
+
+
+  async findProductExistInShop(accessoryId, shopId, tx) {
+
+    const prismaClient = tx || this.prisma
+    try {
+      const product = await prismaClient.accessoryItems.findFirst({
+        where: {
+          accessoryID: accessoryId,
+          shopID: shopId
+        }
+      })
+      return product
+    } catch (err) {
+      console.log(err)
+      throw new APIError(
+        "database error",
         STATUS_CODE.INTERNAL_ERROR,
         "Internal server error"
       )

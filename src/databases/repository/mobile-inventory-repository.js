@@ -37,6 +37,58 @@ class phoneinventoryrepository {
     }
   }
 
+  async findMobileItem(mobileItemId, tx) {
+    const prismaClient = tx || this.prisma
+    try {
+      const mobileItem = await prismaClient.mobileItems.findUnique({
+        where: {
+          id: mobileItemId
+        }
+      })
+      if (!mobileItem) {
+        throw new APIError(
+          "not found error",
+          STATUS_CODE.NOT_FOUND,
+          "product item not found"
+        )
+      }
+      return mobileItem
+    }
+    catch (err) {
+      if (err instanceof APIError) {
+        throw err
+      }
+      throw new APIError(
+        "database error",
+        STATUS_CODE.INTERNAL_ERROR,
+        "internal server error "
+      )
+    }
+  }
+
+  async findProductExistInShop(mobileId, shopId, tx) {
+
+    const prismaClient = tx || this.prisma
+    try {
+      const product = await prismaClient.mobileItems.findFirst({
+        where: {
+          mobileID: mobileId,
+          shopID: shopId
+        }
+      })
+      return product
+    } catch (err) {
+      console.log(err)
+      if (err instanceof APIError) {
+        throw err
+      }
+      throw new APIError(
+        "database error",
+        STATUS_CODE.INTERNAL_ERROR,
+        "Internal server error"
+      )
+    }
+  }
   async createTransferHistory(id, transferData, tx) {
     const prismaClient = tx || this.prisma;
     try {

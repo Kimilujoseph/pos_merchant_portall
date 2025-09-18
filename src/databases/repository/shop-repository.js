@@ -8,7 +8,7 @@ class ShopmanagementRepository {
 
   async createShop({ name, address }) {
     try {
-      console.log("name", name);
+
       const shop = await this.prisma.shops.create({
         data: {
           shopName: name,
@@ -485,6 +485,7 @@ class ShopmanagementRepository {
   async newAddedphoneItem(newItem, tx) {
     const prismaClient = tx || this.prisma;
     try {
+      console.log("new Item details", newItem)
       const updatedShop = await prismaClient.mobileItems.create({
         data: {
           status: newItem.status,

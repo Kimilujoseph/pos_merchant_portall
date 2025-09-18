@@ -5,12 +5,8 @@ const transferManager = new transferManagementService();
 const handleBulkTransfer = async (req, res) => {
     try {
         const user = req.user;
-        console.log(user)
+
         const { bulkDistribution, shopDetails, category } = req.body
-
-        console.log(req.body)
-
-
         if (!bulkDistribution || bulkDistribution.length === 0) {
             throw new APIError("No distribution data provided", STATUS_CODE.BAD_REQUEST, "No distribution data provided");
         }
@@ -39,11 +35,11 @@ const handleBulkTransfer = async (req, res) => {
         let productDistribution;
         let processProductDistribution;
         if (category === "mobiles") {
-            productDistribution = bulkDistribution.filter(item => item.stockId !== null);
+            productDistribution = bulkDistribution.filter(item => item.productId !== null);
 
             processProductDistribution = productDistribution.length > 0 ? processDistribution(productDistribution, transferManager.createNewMobileTransfer) : [];
         } else {
-            productDistribution = bulkDistribution.filter(item => item.stockId !== null);
+            productDistribution = bulkDistribution.filter(item => item.productId !== null);
 
             processProductDistribution = productDistribution.length > 0 ? processDistribution(productDistribution, transferManager.createnewAccessoryTransfer) : [];
         }
