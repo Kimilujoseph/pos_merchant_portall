@@ -57,6 +57,7 @@ class ShopmanagementRepository {
   }
 
   async findShop({ name }, tx) {
+    //console.log("shopname received", name)
     const prismaClient = tx || this.prisma;
     try {
       const findShop = await prismaClient.shops.findFirst({
@@ -85,6 +86,7 @@ class ShopmanagementRepository {
           },
         },
       });
+      //console.log("findShop result:", findShop);
       return findShop;
     } catch (err) {
       console.log(err);

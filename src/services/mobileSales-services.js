@@ -52,6 +52,7 @@ class MobileSalesService {
   }
 
   async validateProductAndFinance(stockId, shopName) {
+    console.log("Validating product and finance for stockId:", stockId, "in shop:", shopName);
     const [product, shop, finance] = await Promise.all([
       this.repositories.mobile.findItem(stockId),
       this.repositories.shop.findShop({ name: shopName }),

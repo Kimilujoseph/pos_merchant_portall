@@ -16,6 +16,8 @@ const makesales = async (req, res) => {
     const { bulksales, customerdetails, shopName } = req.body;
     const user = req.user;
 
+    console.log("shopName", shopName);
+
     // Step 1: Find or create the customer
     const customer = await customerService.findOrCreateCustomer(customerdetails);
 
