@@ -27,7 +27,7 @@ class AccessoryManagementService {
             "Invalid category"
           );
         }
-        const shopFound = await this.shop.findShop({ name: "South B" }, tx);
+        const shopFound = await this.shop.findShop({ name: "WareHouse" }, tx);
         if (!shopFound) {
           throw new APIError(
             "Shop not found",
@@ -223,7 +223,7 @@ class AccessoryManagementService {
       }
       const validUpdates = validateItemsInputs(updates);
       const [shopFound, accessoryFound] = await Promise.all([
-        this.shop.findShop({ name: "South B" }),
+        this.shop.findShop({ name: "WareHouse" }),
         this.accessory.findItem(accessoryId),
       ]);
       if (!shopFound) {

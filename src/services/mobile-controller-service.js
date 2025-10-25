@@ -31,9 +31,9 @@ class MobilemanagementService {
         throw new APIError("Invalid category", STATUS_CODE.BAD_REQUEST, "The specified category does not exist.");
       }
 
-      const shopFound = await this.shop.findShop({ name: "South B" }, tx);
+      const shopFound = await this.shop.findShop({ name: "WareHouse" }, tx);
       if (!shopFound) {
-        throw new APIError("Shop not found", STATUS_CODE.NOT_FOUND, "The default shop 'South B' was not found.");
+        throw new APIError("Shop not found", STATUS_CODE.NOT_FOUND, "The default shop 'WareHouse' was not found.");
       }
       const shopId = shopFound.id;
 
@@ -260,7 +260,7 @@ class MobilemanagementService {
       }
       const validUpdates = validateUpdateInputs(updates);
       const [shopFound, mobileFound] = await Promise.all([
-        this.shop.findShop({ name: "South B" }),
+        this.shop.findShop({ name: "WareHouse" }),
         this.mobile.findItem(mobileId),
       ]);
       if (!shopFound) {

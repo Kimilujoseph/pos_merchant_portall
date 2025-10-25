@@ -15,7 +15,7 @@ class distributionService {
     const { bulkDistribution, mainShop, distributedShop, userId } = bulkDetails;
 
     return prisma.$transaction(async (tx) => {
-      const findMainShop = await this.shop.findShop({ name: "South B" }, tx);
+      const findMainShop = await this.shop.findShop({ name: "WareHouse" }, tx);
       const findMiniShop = await this.shop.findShop({ name: distributedShop }, tx);
 
       if (!findMainShop || !findMiniShop) {
@@ -74,7 +74,7 @@ class distributionService {
     const { bulkDistribution, mainShop, distributedShop, userId } = bulkDetails;
 
     return prisma.$transaction(async (tx) => {
-      const findMainShop = await this.shop.findShop({ name: "South B" }, tx);
+      const findMainShop = await this.shop.findShop({ name: "WareHouse" }, tx);
       const findMiniShop = await this.shop.findShop({ name: distributedShop }, tx);
 
       if (!findMainShop || !findMiniShop) {
