@@ -83,7 +83,7 @@ const App = async (app) => {
   // Enable CORS
   app.use(
     cors({
-      origin: ["http://localhost:4422", "http://smartgiggs.co.ke"],
+      origin: ["http://localhost:4422", "https://smartgiggs.co.ke"],
       credentials: true,
     })
   );
