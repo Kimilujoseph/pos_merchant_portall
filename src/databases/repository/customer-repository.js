@@ -19,6 +19,11 @@ class CustomerRepository {
       where: { phoneNumber: phone },
     });
   }
+  async findCusomerByEmail(email) {
+    return await prisma.customer.findFirst({
+      where: { email: email },
+    });
+  }
 }
 
 export default new CustomerRepository();

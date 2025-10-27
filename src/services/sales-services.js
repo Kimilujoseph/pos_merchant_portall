@@ -33,7 +33,7 @@ class salesmanagment {
       throw new APIError("Shop not found", STATUS_CODE.NOT_FOUND, "The specified shop does not exist.");
     }
 
-    let customer = await this.customer.findCustomerByPhone(customerdetails.phonenumber);
+    let customer = await this.customer.findCustomerByPhone(customerdetails.phonenumber) || await this.customer.findCusomerByEmail(customerdetails.email);
     if (!customer) {
       const customerData = {
         name: customerdetails.name,

@@ -295,6 +295,11 @@ const userUpdateStatus = async (req, res, next) => {
   try {
     const { status, id } = req.body;
     const userId = id;
+    const user = req.user
+    if (!["superuser", "manager"].includes(user.role)) {
+      throw new APIError("unauthorised", 403, "cannot update user status");
+    }
+
     const updatedUser = await usermanagement.updateUserStatus({
       status,
       userId,
@@ -316,7 +321,7 @@ const userUpdateStatus = async (req, res, next) => {
 const userUpdateRole = async (req, res, next) => {
   try {
     const user = req.user;
-    if (user.role !== "superuser" && user.role !== "manager") {
+    if (user.role !== "superuser") {
       throw new APIError("unauthorised", 403, "cannot update user role");
     }
     const { role, id } = req.body;

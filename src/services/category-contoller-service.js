@@ -22,6 +22,15 @@ class CategoryManagementService {
             if (!verifiedProperties) {
                 throw new APIError("not found", STATUS_CODE.BAD_REQUEST, "not item found");
             }
+
+            const allowedItemTypes = ['accessories', 'mobiles'];
+            if (!itemDetails.itemType || !allowedItemTypes.includes(itemDetails.itemType)) {
+                throw new APIError(
+                    "Invalid itemType",
+                    STATUS_CODE.BAD_REQUEST,
+                    `itemType is required and must be one of: ${allowedItemTypes.join(', ')}`
+                );
+            }
             const addedProduct = await this.repository.AddNewProduct(itemDetails);
             return addedProduct
         }
