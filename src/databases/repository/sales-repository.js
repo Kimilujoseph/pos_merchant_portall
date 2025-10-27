@@ -194,7 +194,6 @@ class Sales {
           _count: true,
         }),
       ]);
-      //console.log("reult", results)
       const transformSale = (sale) => ({
         ...sale,
         productDetails:
@@ -205,7 +204,7 @@ class Sales {
         financeDetails: {
           financeStatus: sale.financeStatus || "N/A",
           financeAmount: sale.financeAmount || 0,
-          financer: sale.Financer.name || "N/A",
+          financer: sale.Financer?.name || "N/A",
         },
       });
       return {
@@ -219,7 +218,7 @@ class Sales {
         },
       };
     } catch (err) {
-      console.error("Database error:", err);
+      //console.error("Database error:", err);
       throw new APIError(
         "Database error",
         STATUS_CODE.INTERNAL_ERROR,
@@ -248,7 +247,7 @@ class Sales {
     return {
       financeStatus: sale.financeStatus || "N/A",
       financeAmount: sale.financeAmount || 0,
-      financer: sale.Financer.name || "N/A",
+      financer: sale.Financer?.name || "N/A",
     };
   }
 
@@ -368,7 +367,7 @@ class Sales {
         financeDetails: {
           financeStatus: sale.financeStatus || "N/A",
           financeAmount: sale.financeAmount || 0,
-          financer: sale.Financer.name || "N/A",
+          financer: sale.Financer?.name || "N/A",
         },
       });
 

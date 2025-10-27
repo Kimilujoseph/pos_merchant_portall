@@ -328,6 +328,7 @@ class salesmanagment {
 
   async getUserSales(filters) {
     try {
+
       return await this._getHybridSalesData(filters);
     } catch (err) {
       console.log(err)
