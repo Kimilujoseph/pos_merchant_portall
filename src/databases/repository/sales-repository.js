@@ -218,7 +218,7 @@ class Sales {
         },
       };
     } catch (err) {
-      //console.error("Database error:", err);
+      console.error("Database error:", err);
       throw new APIError(
         "Database error",
         STATUS_CODE.INTERNAL_ERROR,

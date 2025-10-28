@@ -110,7 +110,7 @@ class salesmanagment {
           if (itemType === 'mobiles') {
             const updateId = itemToSell.id;
             createdSale = await tx.mobilesales.create({ data: saleData });
-            console.log("sales created", createdSale)
+            //console.log("sales created", createdSale)
             await tx.mobileItems.updateMany({
               where: { id: updateId },
               data: { status: "sold", quantity: { decrement: soldUnits } },
@@ -215,7 +215,7 @@ class salesmanagment {
           });
         }
       }
-      console.log(allSalesResults)
+      //console.log(allSalesResults)
       return allSalesResults;
     });
   }
@@ -331,7 +331,7 @@ class salesmanagment {
 
       return await this._getHybridSalesData(filters);
     } catch (err) {
-      console.log(err)
+      //console.log(err)
       this.handleServiceError(err);
     }
   }
