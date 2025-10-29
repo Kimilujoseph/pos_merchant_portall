@@ -49,38 +49,24 @@ class CategoryManagementService {
     //fetch all categories available
     async getAllCategories(userRole) {
         try {
-            const allCategories = await this.repository.getAllCategories(userRole);
-            const individualCategory = allCategories.map((itemStock) => {
-                if (itemStock.mobiles.length > 0) {
-                    return {
-                        id: itemStock.id,
-                        itemName: itemStock.itemName,
-                        itemModel: itemStock.itemModel,
-                        minPrice: itemStock.minPrice,
-                        maxPrice: itemStock.maxPrice,
-                        brand: itemStock.brand,
-                        category: itemStock.category,
-                        availableStock: itemStock.mobiles.length,
-                        // Items: itemStock.mobiles
-                    }
-                } else {
-                    return {
-                        id: itemStock.id,
-                        itemName: itemStock.itemName,
-                        itemModel: itemStock.itemModel,
-                        minPrice: itemStock.minPrice,
-                        maxPrice: itemStock.maxPrice,
-                        brand: itemStock.brand,
-                        category: itemStock.category,
-                        availableStock: itemStock.accessories.length,
-                        //Items: itemStock.accessories
-                    }
-                }
-            })
-            //console.log("$$$", individualCategory);
-            return individualCategory;
+            const allCategoriesWithStock = await this.repository.getAllCategories(userRole);
+            
+            const result = allCategoriesWithStock.map(c => ({
+                id: c.id,
+                itemName: c.itemName,
+                itemModel: c.itemModel,
+                minPrice: c.minPrice,
+                maxPrice: c.maxPrice,
+                brand: c.brand,
+                category: c.category,
+                availableStock: c.availableStock,
+                status: c.status
+            }));
+
+            return result;
         }
         catch (err) {
+            console.log(err);
             if (err instanceof APIError) {
                 throw err
             }
@@ -110,7 +96,7 @@ class CategoryManagementService {
 
     async updateCategory(categoryId, updatedDetails) {
         try {
-            const  upadatingDetails = {...updatedDetails,status:"MODIFIED"}
+            const upadatingDetails = { ...updatedDetails, status: "MODIFIED" }
             const updatedCategory = await this.repository.updateCategory(categoryId, updattingDetails);
             return updatedCategory;
         }

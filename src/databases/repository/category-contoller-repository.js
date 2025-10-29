@@ -115,41 +115,9 @@ class CategoryManagementRepository {
         };
       }
 
-      const allCategories = await prisma.categories.findMany({
-        where: whereClause,
-        include: {
-          accessories: {
-            select: {
-              id: true,
-              discount: true,
-              commission: true,
-              availableStock: true,
-              createdAt: true,
-              batchNumber: true,
-              stockStatus: true,
-              faultyItems: true,
-              color: true,
-              status: true,
-            },
-          },
-          mobiles: {
-            select: {
-              id: true,
-              discount: true,
-              commission: true,
-              availableStock: true,
-              createdAt: true,
-              batchNumber: true,
-              stockStatus: true,
-              color: true,
-              IMEI: true,
-              status: true
-            },
-          },
-        },
-      });
+      const categories = await prisma.categories.findMany({ where: whereClause });
 
-      if (!allCategories || allCategories.length === 0) {
+      if (!categories || categories.length === 0) {
         throw new APIError(
           "Not Found",
           STATUS_CODE.NOT_FOUND,
@@ -157,7 +125,40 @@ class CategoryManagementRepository {
         );
       }
 
-      return allCategories;
+      const categoryIds = categories.map(c => c.id);
+      console.log("categoryIds", categoryIds);
+      //Just go through the accessories table, group them by their CategoryId, and give me the sum of availableStock for each group.
+      //and do the same for the mobiles
+      const accessoryStock = await prisma.accessories.groupBy({
+        by: ['CategoryId'],
+        _sum: {
+          availableStock: true,
+        },
+        where: {
+          CategoryId: { in: categoryIds }
+        }
+      });
+
+      const mobileStock = await prisma.mobiles.groupBy({
+        by: ['CategoryId'],
+        _sum: {
+          availableStock: true,
+        },
+        where: {
+          CategoryId: { in: categoryIds }
+        }
+      });
+
+      const accessoryStockMap = new Map(accessoryStock.map(item => [item.CategoryId, item._sum.availableStock || 0]));
+      //console.log("accessoryStockMap", accessoryStockMap);
+      const mobileStockMap = new Map(mobileStock.map(item => [item.CategoryId, item._sum.availableStock || 0]));
+
+      const categoriesWithStock = categories.map(category => ({
+        ...category,
+        availableStock: (accessoryStockMap.get(category.id) || 0) + (mobileStockMap.get(category.id) || 0)
+      }));
+      //console.log("categoriesWithStock", categoriesWithStock);
+      return categoriesWithStock;
     } catch (err) {
       console.log("err", err);
       throw new APIError(
