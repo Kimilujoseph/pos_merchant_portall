@@ -50,7 +50,7 @@ class CategoryManagementService {
     async getAllCategories(userRole) {
         try {
             const allCategoriesWithStock = await this.repository.getAllCategories(userRole);
-            
+
             const result = allCategoriesWithStock.map(c => ({
                 id: c.id,
                 itemName: c.itemName,
@@ -96,8 +96,8 @@ class CategoryManagementService {
 
     async updateCategory(categoryId, updatedDetails) {
         try {
-            const upadatingDetails = { ...updatedDetails, status: "MODIFIED" }
-            const updatedCategory = await this.repository.updateCategory(categoryId, updattingDetails);
+            const updatingDetails = { ...updatedDetails, status: updatedDetails.status ? updatedDetails.status : "MODIFIED" }
+            const updatedCategory = await this.repository.updateCategory(categoryId, updatingDetails);
             return updatedCategory;
         }
         catch (err) {

@@ -45,7 +45,7 @@ const getAllCategories = async (req, res) => {
                 "not allowed to get all categories"
             )
         }
-        const allProducts = await category.getAllCategories()
+        const allProducts = await category.getAllCategories(user.role)
         res.status(200).json({
             message: "all categories retrieved successfully",
             data: allProducts

@@ -28,7 +28,7 @@ class CategoryManagementRepository {
 
       return productItem;
     } catch (err) {
-      console.error(err); // Log the entire error object for debugging
+      console.error(err);
 
       if (err.code === "P2002") {
         throw new APIError(
@@ -106,6 +106,7 @@ class CategoryManagementRepository {
   //fetch all categories id
   async getAllCategories(userRole) {
     try {
+
       let whereClause = {};
       if (userRole !== 'superuser') {
         whereClause = {
@@ -126,7 +127,7 @@ class CategoryManagementRepository {
       }
 
       const categoryIds = categories.map(c => c.id);
-      console.log("categoryIds", categoryIds);
+      //console.log("categoryIds", categoryIds);
       //Just go through the accessories table, group them by their CategoryId, and give me the sum of availableStock for each group.
       //and do the same for the mobiles
       const accessoryStock = await prisma.accessories.groupBy({
