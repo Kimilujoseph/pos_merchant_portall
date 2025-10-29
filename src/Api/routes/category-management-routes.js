@@ -2,7 +2,7 @@
 import express from 'express';
 const router = express.Router();
 import verifyUser from '../../middleware/verification.js';
-import { createCategory, updateCategory, getCategoryById, getAllCategories, getCategoryByShop } from '../controllers/category-managment-controller.js';
+import { createCategory, updateCategory, getCategoryById, getAllCategories, getCategoryByShop, deleteCategory } from '../controllers/category-managment-controller.js';
 
 
 router.get('/all', verifyUser, getAllCategories);
@@ -15,6 +15,6 @@ router.put('/update/:id', verifyUser, updateCategory);
 router.get("/get-category/shop/:shopName/:categoryId", getCategoryByShop)
 
 // // Delete a category
-// router.delete('/:id', deleteCategory);
+router.delete('/:id',verifyUser, deleteCategory);
 
 export default router;

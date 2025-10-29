@@ -144,10 +144,39 @@ const getCategoryByShop = async (req, res) => {
     }
 }
 
+const deleteCategory = async (req, res) => {
+    try {
+        const user = req.user;
+        if (user.role !== "superuser" && user.role !== "manager") {
+            throw new APIError(
+                "not authorised",
+                STATUS_CODE.UNAUTHORIZED,
+                "not allowed to delete a category"
+            )
+        }
+        const categoryId = parseInt(req.params.id, 10);
+        await category.deleteCategory(categoryId);
+        res.status(200).json({
+            message: "category successfully deleted"
+        });
+    } catch (err) {
+        if (err instanceof APIError) {
+            return res
+                .status(err.statusCode)
+                .json({ message: err.message, error: true });
+        } else {
+            return res
+                .status(500)
+                .json({ message: "Internal Server Error", error: true });
+        }
+    }
+};
+
 export {
     createCategory,
     updateCategory,
     getCategoryById,
     getAllCategories,
-    getCategoryByShop
+    getCategoryByShop,
+    deleteCategory
 }

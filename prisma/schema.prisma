@@ -351,6 +351,7 @@ model categories {
   brand          String?              @default("unknown") @db.VarChar(255)
   maxPrice       Int
   category       String?              @db.VarChar(45)
+  status         CategoryStatus       @default(AVAILABLE) 
   accessories    accessories[]
   accessorysales accessorysales[]
   mobiles        mobiles[]
@@ -546,6 +547,12 @@ enum Expense_category {
   MARKETING
   OTHER
 }
+enum CategoryStatus {                                                                                              
+ DELETED                                                                                                          
+ AVAILABLE                                                                                                        
+  SUSPENDED                                                                                                        
+   MODIFIED                                                                                                         
+     } 
 
 enum categories_itemType {
   mobiles

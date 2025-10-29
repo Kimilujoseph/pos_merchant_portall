@@ -104,9 +104,19 @@ class CategoryManagementRepository {
   //     }
   // }
   //fetch all categories id
-  async getAllCategories() {
+  async getAllCategories(userRole) {
     try {
+      let whereClause = {};
+      if (userRole !== 'superuser') {
+        whereClause = {
+          status: {
+            not: 'DELETED',
+          },
+        };
+      }
+
       const allCategories = await prisma.categories.findMany({
+        where: whereClause,
         include: {
           accessories: {
             select: {
@@ -152,6 +162,28 @@ class CategoryManagementRepository {
         "Service Error",
         STATUS_CODE.INTERNAL_ERROR,
         err.message || "Internal server error"
+      );
+    }
+  }
+
+  async deleteCategory(categoryId) {
+    try {
+      const updatedCategory = await prisma.categories.update({
+        where: {
+          id: categoryId,
+        },
+        data: {
+          status: 'DELETED',
+        },
+      });
+
+      return updatedCategory;
+    } catch (err) {
+      console.log("err", err);
+      throw new APIError(
+        "Service Error",
+        STATUS_CODE.INTERNAL_ERROR,
+        "internal server error"
       );
     }
   }

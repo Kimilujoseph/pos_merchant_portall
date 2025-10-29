@@ -47,9 +47,9 @@ class CategoryManagementService {
     }
 
     //fetch all categories available
-    async getAllCategories() {
+    async getAllCategories(userRole) {
         try {
-            const allCategories = await this.repository.getAllMobilesCategory();
+            const allCategories = await this.repository.getAllCategories(userRole);
             const individualCategory = allCategories.map((itemStock) => {
                 if (itemStock.mobiles.length > 0) {
                     return {
@@ -77,7 +77,7 @@ class CategoryManagementService {
                     }
                 }
             })
-            console.log("$$$$$$", individualCategory);
+            //console.log("$$$", individualCategory);
             return individualCategory;
         }
         catch (err) {
@@ -89,6 +89,22 @@ class CategoryManagementService {
                 STATUS_CODE.INTERNAL_ERROR,
                 "internal server error"
             )
+        }
+    }
+
+    async deleteCategory(categoryId) {
+        try {
+            const id = parseInt(categoryId, 10);
+            await this.repository.deleteCategory(id);
+        } catch (err) {
+            if (err instanceof APIError) {
+                throw err;
+            }
+            throw new APIError(
+                "service error",
+                STATUS_CODE.INTERNAL_ERROR,
+                "internal server error"
+            );
         }
     }
 
