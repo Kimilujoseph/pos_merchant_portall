@@ -110,7 +110,8 @@ class CategoryManagementService {
 
     async updateCategory(categoryId, updatedDetails) {
         try {
-            const updatedCategory = await this.repository.updateCategory(categoryId, updatedDetails);
+            const  upadatingDetails = {...updatedDetails,status:"MODIFIED"}
+            const updatedCategory = await this.repository.updateCategory(categoryId, updattingDetails);
             return updatedCategory;
         }
         catch (err) {

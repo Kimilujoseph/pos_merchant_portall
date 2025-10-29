@@ -129,6 +129,7 @@ class CategoryManagementRepository {
               stockStatus: true,
               faultyItems: true,
               color: true,
+              status: true,
             },
           },
           mobiles: {
@@ -142,6 +143,7 @@ class CategoryManagementRepository {
               stockStatus: true,
               color: true,
               IMEI: true,
+              status: true
             },
           },
         },
