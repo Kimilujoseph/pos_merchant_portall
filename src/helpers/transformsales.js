@@ -1,5 +1,5 @@
 const transformSales = (rawSale) => {
-  console.log("paginated sales ", rawSale);
+  //console.log("paginated sales ", rawSale);
 
   const productDetails = rawSale.productDetails || rawSale.mobiles || rawSale.accessories || {};
   const categoryDetails = rawSale.categoryDetails || rawSale.categories || {};
