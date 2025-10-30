@@ -92,4 +92,28 @@ const handleBulkSale = async (req, res, next) => {
   }
 };
 
-export { handleGetSales, handleBulkSale };
+const handleUpdateFinanceStatus = async (req, res, next) => {
+  try {
+    const { saleType, saleId } = req.params;
+    const { status } = req.body;
+
+    if (!status) {
+      throw new APIError("Bad Request", STATUS_CODE.BAD_REQUEST, "Status is a required field.");
+    }
+    if (!['mobile', 'accessory'].includes(saleType)) {
+      throw new APIError("Bad Request", STATUS_CODE.BAD_REQUEST, "Invalid sale type in URL.");
+    }
+
+    const result = await salesService.updateFinanceStatus({ saleType, saleId, status });
+
+    handleResponse({
+      res,
+      message: result.message,
+      data: result.sale,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export { handleGetSales, handleBulkSale, handleUpdateFinanceStatus };

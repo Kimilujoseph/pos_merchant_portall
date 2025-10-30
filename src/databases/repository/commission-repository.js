@@ -31,10 +31,10 @@ class CommissionRepository {
       ]);
 
       const formattedPayments = payments.map(p => {
-        const { 
-          actors_CommissionPayment_sellerIdToactors, 
-          actors_CommissionPayment_processedByIdToactors, 
-          ...rest 
+        const {
+          actors_CommissionPayment_sellerIdToactors,
+          actors_CommissionPayment_processedByIdToactors,
+          ...rest
         } = p;
         return {
           ...rest,
@@ -85,12 +85,11 @@ class CommissionRepository {
       const accessorySalesLinks = salesIds
         .filter(sale => sale.type === 'accessory')
         .map(sale => ({
-          accessorySaleId: sale.id,
+          accessorySaleId: sale.salesId,
           commissionPaymentId: commissionPayment.id,
           assignedBy: String(processedById),
         }));
-      console.log('Mobile Sales Links:', mobileSalesLinks);
-      console.log('Accessory Sales Links:', accessorySalesLinks);
+
       if (mobileSalesLinks.length > 0) {
         await prismaClient.commissionPaymentsOnMobileSales.createMany({
           data: mobileSalesLinks,

@@ -1,7 +1,8 @@
 import express from "express";
 import verifyUser from "../../middleware/verification.js";
-import { handleGetSales, handleBulkSale } from "../controllers/sales-contoller.js";
+import { handleGetSales, handleBulkSale, handleUpdateFinanceStatus } from "../controllers/sales-contoller.js";
 import { parseSalesQuery } from "../../middleware/query-parser.js";
+import { checkRole } from "../../helpers/authorisation.js";
 
 const route = express.Router();
 
@@ -14,5 +15,15 @@ route.get("/report", verifyUser, parseSalesQuery, handleGetSales);
 
 // Make a sale route
 route.post("/items/sale", verifyUser, handleBulkSale);
+
+const authorizeFinanceUpdate = (req, res, next) => {
+  if (!checkRole(req.user.role, ["manager", "superuser"])) {
+    return res.status(403).json({ message: "You are not authorized to update sales." });
+  }
+  next();
+};
+
+// Update finance status route
+route.patch("/:saleType/:saleId/finance-status", verifyUser, authorizeFinanceUpdate, handleUpdateFinanceStatus);
 
 export default route;

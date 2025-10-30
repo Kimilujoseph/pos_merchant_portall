@@ -21,6 +21,7 @@ import analyticsRoutes from "./Api/routes/analytics-routes.js";
 import commissionRoutes from "./Api/routes/commission-routes.js";
 import salaryRoutes from "./Api/routes/salary-routes.js";
 import returnRoutes from "./Api/routes/return-routes.js";
+import financialReportRoutes from "./Api/routes/financial-report-routes.js";
 import config from "./Config/index.js";
 const { APP_SECRET, MONGO_URL } = config;
 import path from "path";
@@ -118,6 +119,7 @@ const App = async (app) => {
   app.use("/api/commissions", commissionRoutes);
   app.use("/api/salaries", salaryRoutes);
   app.use("/api/returns", returnRoutes);
+  app.use("/api", financialReportRoutes);
   app.use("/api/status", (req, res) => {
     res.status(200).json({ message: "Server is up and running" });
   });

@@ -370,6 +370,27 @@ class salesmanagment {
       err.message || "Internal server error"
     );
   }
+
+  async updateFinanceStatus({ saleType, saleId, status }) {
+    try {
+      const salesTable = saleType === 'mobile' ? 'mobilesales' : 'accessorysales';
+      
+      if (!['paid', 'pending', 'overdue'].includes(status)) {
+        throw new APIError("Bad Request", STATUS_CODE.BAD_REQUEST, "Invalid status provided.");
+      }
+
+      const updatedSale = await this.sales.updateFinanceStatus({
+        salesTable,
+        saleId: parseInt(saleId, 10),
+        status,
+      });
+
+      return { message: "Finance status updated successfully.", sale: updatedSale };
+
+    } catch (err) {
+      this.handleServiceError(err);
+    }
+  }
 }
 
 export { salesmanagment };

@@ -35,8 +35,14 @@ const handleGetSalaryPayments = async (req, res, next) => {
       throw new APIError("Not authorized", STATUS_CODE.UNAUTHORIZED, "You are not authorized to view salary payments.");
     }
 
-    const { page = 1, limit = 10 } = req.query;
-    const options = { page: parseInt(page, 10), limit: parseInt(limit, 10) };
+    const { page = 1, limit = 10, startDate, endDate, employeeId } = req.query;
+    const options = {
+      page: parseInt(page, 10),
+      limit: parseInt(limit, 10),
+      startDate,
+      endDate,
+      employeeId: employeeId ? parseInt(employeeId, 10) : undefined,
+    };
 
     const result = await salaryService.getSalaryPayments(options);
 

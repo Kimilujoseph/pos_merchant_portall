@@ -4,11 +4,24 @@ import { APIError, STATUS_CODE } from '../../Utils/app-error.js';
 const prisma = new PrismaClient();
 
 class SalaryRepository {
-  async findSalaryPayments({ page = 1, limit = 10 } = {}) {
+  async findSalaryPayments({ page = 1, limit = 10, startDate, endDate, employeeId } = {}) {
     try {
       const skip = (page - 1) * limit;
-      const [payments, total] = await prisma.$transaction([
+      const whereClause = {};
+
+      if (startDate && endDate) {
+        whereClause.paymentDate = {
+          gte: new Date(startDate),
+          lte: new Date(endDate),
+        };
+      }
+      if (employeeId) {
+        whereClause.employeeId = employeeId;
+      }
+
+      const [payments, total, summary] = await prisma.$transaction([
         prisma.salaryPayment.findMany({
+          where: whereClause,
           skip,
           take: limit,
           orderBy: { paymentDate: 'desc' },
@@ -21,7 +34,12 @@ class SalaryRepository {
             },
           },
         }),
-        prisma.salaryPayment.count(),
+        prisma.salaryPayment.count({ where: whereClause }),
+        prisma.salaryPayment.aggregate({
+          where: whereClause,
+          _sum: { amount: true },
+          _count: { id: true },
+        }),
       ]);
 
       const formattedPayments = payments.map(p => {
@@ -38,10 +56,16 @@ class SalaryRepository {
       });
 
       return {
+        summary: {
+          totalPaid: summary._sum.amount || 0,
+          paymentCount: summary._count.id || 0,
+        },
         payments: formattedPayments,
-        total,
-        totalPages: Math.ceil(total / limit),
-        currentPage: page,
+        pagination: {
+          totalRecords: total,
+          totalPages: Math.ceil(total / limit),
+          currentPage: page,
+        }
       };
     } catch (err) {
       throw new APIError(

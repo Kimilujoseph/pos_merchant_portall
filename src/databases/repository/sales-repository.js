@@ -592,6 +592,30 @@ class Sales {
       );
     }
   }
+
+  async updateFinanceStatus({ salesTable, saleId, status }) {
+    try {
+      const salesModel = prisma[salesTable];
+      if (!salesModel) {
+        throw new APIError("Not Found", STATUS_CODE.NOT_FOUND, "Invalid sale type specified.");
+      }
+
+      return await salesModel.update({
+        where: { id: saleId },
+        data: { financeStatus: status },
+      });
+    } catch (err) {
+      if (err.code === 'P2025') {
+        throw new APIError("Not Found", STATUS_CODE.NOT_FOUND, `Sale with ID ${saleId} not found.`);
+      }
+      console.error("Database error updating finance status:", err);
+      throw new APIError(
+        "Database Error",
+        STATUS_CODE.INTERNAL_ERROR,
+        "Failed to update finance status."
+      );
+    }
+  }
 }
 
 export { Sales };
