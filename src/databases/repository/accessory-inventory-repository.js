@@ -4,11 +4,11 @@ import { APIError, STATUS_CODE } from "../../Utils/app-error.js";
 const prisma = new PrismaClient();
 
 class AccessoryInventoryRepository {
-  async createAccessoryWithFinanceDetails(payload, tx) {
-    const prismaClient = tx || prisma;
+  async createAccessoryHistoryDetails(payload, tx) {
+    // const prismaClient = tx || prisma;
     try {
       const { user, shopId, ...accessoryDetails } = payload;
-      console.log("accessoryDetails.availableStock:", accessoryDetails.availableStock);
+      //console.log("accessoryDetails.availableStock:", accessoryDetails);
       const newAccessoryProduct = await this.createAccessoryStock(accessoryDetails, tx);
       const createAccessoryMetaData = await Promise.all([
         this.createHistory({
@@ -40,16 +40,18 @@ class AccessoryInventoryRepository {
     faultyItems,
     supplierName,
     availableStock,
-    productCost,
+    productcost,
     commission,
     color,
     discount,
     barcodePath,
     supplierId,
   }, tx) {
+
     const prismaClient = tx || prisma;
     try {
       const category = parseInt(CategoryId, 10);
+      //console.log("Creating accessory stock with batch number:", productcost);
       const stock = await prismaClient.accessories.create({
         data: {
           CategoryId: category,
@@ -58,7 +60,7 @@ class AccessoryInventoryRepository {
           faultyItems,
           supplierName,
           availableStock,
-          productCost,
+          productCost: productcost,
           commission,
           color,
           discount,
@@ -73,13 +75,13 @@ class AccessoryInventoryRepository {
         throw new APIError(
           "Duplicate Key Error",
           STATUS_CODE.BAD_REQUEST,
-          `An accessory with the same ${err.meta.target[0]} already exists.`
+          `An accessory with the same batch number already exists.`
         );
       }
       throw new APIError(
         "API Error",
         STATUS_CODE.INTERNAL_ERROR,
-        err.message || "Unable to create new accessory stock"
+        "Unable to create new accessory stock"
       );
     }
   }
