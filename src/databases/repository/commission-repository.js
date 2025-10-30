@@ -4,15 +4,21 @@ import { APIError, STATUS_CODE } from '../../Utils/app-error.js';
 const prisma = new PrismaClient();
 
 class CommissionRepository {
-  async findCommissionPayments({ page = 1, limit = 10, sellerId } = {}) {
+  async findCommissionPayments({ page = 1, limit = 10, sellerId, startDate, endDate } = {}) {
     try {
       const skip = (page - 1) * limit;
       const whereClause = {};
       if (sellerId) {
         whereClause.sellerId = sellerId;
       }
+      if (startDate && endDate) {
+        whereClause.paymentDate = {
+          gte: new Date(startDate),
+          lte: new Date(endDate),
+        };
+      }
 
-      const [payments, total] = await prisma.$transaction([
+      const [payments, total, summary, bySeller] = await prisma.$transaction([
         prisma.commissionPayment.findMany({
           where: whereClause,
           skip,
@@ -28,7 +34,35 @@ class CommissionRepository {
           },
         }),
         prisma.commissionPayment.count({ where: whereClause }),
+        prisma.commissionPayment.aggregate({
+          where: whereClause,
+          _sum: { amountPaid: true },
+          _count: { id: true },
+        }),
+        prisma.commissionPayment.groupBy({
+          by: ['sellerId'],
+          where: whereClause,
+          _sum: { amountPaid: true },
+          orderBy: {
+            _sum: {
+              amountPaid: 'desc',
+            },
+          },
+        }),
       ]);
+
+      // Fetch seller details for the 'bySeller' aggregation
+      const sellerIds = bySeller.map(item => item.sellerId);
+      const sellers = await prisma.actors.findMany({
+        where: { id: { in: sellerIds } },
+        select: { id: true, name: true },
+      });
+      const sellerMap = new Map(sellers.map(s => [s.id, s]));
+
+      const formattedBySeller = bySeller.map(item => ({
+        seller: sellerMap.get(item.sellerId),
+        totalPaid: item._sum.amountPaid || 0,
+      }));
 
       const formattedPayments = payments.map(p => {
         const {
@@ -44,12 +78,20 @@ class CommissionRepository {
       });
 
       return {
+        summary: {
+          totalPaid: summary._sum.amountPaid || 0,
+          paymentCount: summary._count.id || 0,
+        },
+        bySeller: formattedBySeller,
         payments: formattedPayments,
-        total,
-        totalPages: Math.ceil(total / limit),
-        currentPage: page,
+        pagination: {
+          totalRecords: total,
+          totalPages: Math.ceil(total / limit),
+          currentPage: page,
+        }
       };
     } catch (err) {
+      console.log(err)
       throw new APIError(
         'Database Error',
         STATUS_CODE.INTERNAL_ERROR,

@@ -32,14 +32,24 @@ const handleCreateCommissionPayment = async (req, res, next) => {
 const handleGetCommissionPayments = async (req, res, next) => {
   try {
     const { user } = req;
-    const { page = 1, limit = 10 } = req.query;
-    const options = { page: parseInt(page, 10), limit: parseInt(limit, 10) };
+    const { page = 1, limit = 10, sellerId: querySellerId } = req.query;
+    const { startDate, endDate } = req.dateQuery;
 
+    const options = {
+      page: parseInt(page, 10),
+      limit: parseInt(limit, 10),
+      startDate,
+      endDate,
+    };
 
-    if (checkRole(user.role, ['seller'])) {
-      options.sellerId = user.id;
-    } else if (!checkRole(user.role, ['manager', 'superuser'])) {
-      throw new APIError("Not authorized", STATUS_CODE.UNAUTHORIZED, "You are not authorized to view commission payments.");
+    if (querySellerId) {
+      const requestedSellerId = parseInt(querySellerId, 10);
+      if (!checkRole(user.role, ['manager', 'superuser']) && user.id !== requestedSellerId) {
+        throw new APIError("Not authorized", STATUS_CODE.UNAUTHORIZED, "You are not authorized to view this seller's commission payments.");
+      }
+      else {
+        options.sellerId = requestedSellerId;
+      }
     }
 
     const result = await commissionService.getCommissionPayments(options);

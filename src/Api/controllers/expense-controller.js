@@ -32,7 +32,19 @@ const handleGetExpenses = async (req, res, next) => {
         }
 
         const { shopId } = req.params;
-        const expenses = await expenseService.getExpenses(parseInt(shopId, 10));
+        const { page = 1, limit = 10, employeeId } = req.query;
+        const { startDate, endDate } = req.dateQuery;
+
+        const options = {
+            page: parseInt(page, 10),
+            limit: parseInt(limit, 10),
+            startDate,
+            endDate,
+            employeeId: employeeId ? parseInt(employeeId, 10) : undefined,
+            shopId: shopId ? parseInt(shopId, 10) : undefined,
+        };
+
+        const expenses = await expenseService.getExpenses(options);
 
         handleResponse({
             res,

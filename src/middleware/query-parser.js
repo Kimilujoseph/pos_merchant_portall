@@ -1,6 +1,28 @@
 import { getDateRange } from '../helpers/dateUtils.js';
 import { APIError } from '../Utils/app-error.js';
 
+const parseDateQuery = (req, res, next) => {
+  try {
+    const { date, period, startDate: queryStartDate, endDate: queryEndDate } = req.query;
+    req.dateQuery = {};
+
+    if (queryStartDate && queryEndDate) {
+      req.dateQuery.startDate = new Date(queryStartDate);
+      req.dateQuery.endDate = new Date(queryEndDate);
+    } else if (period || date) {
+      const effectivePeriod = date ? 'day' : period;
+      const [startDate, endDate] = getDateRange(effectivePeriod, date).map((m) => m.toDate());
+      req.dateQuery.startDate = startDate;
+      req.dateQuery.endDate = endDate;
+    }
+    
+    next();
+  } catch (error) {
+    next(new APIError("Invalid date query parameters.", 400, "The date query parameters provided are invalid."));
+  }
+};
+
+
 const parseSalesQuery = (req, res, next) => {
   try {
     const { page, limit, date, period, startDate: queryStartDate, endDate: queryEndDate } = req.query;
@@ -14,13 +36,11 @@ const parseSalesQuery = (req, res, next) => {
     };
 
     if (queryStartDate && queryEndDate) {
-      console.log("queryStartDate", queryStartDate)
       req.salesQuery.startDate = new Date(queryStartDate);
       req.salesQuery.endDate = new Date(queryEndDate);
     } else {
-      req.salesQuery.period = date ? 'day' : period;
+      req.salesQuery.period = date ? 'day' : period || 'year';
       const [startDate, endDate] = getDateRange(req.salesQuery.period, date).map((m) => m.toDate());
-      console.log("startdate", endDate)
       req.salesQuery.startDate = startDate;
       req.salesQuery.endDate = endDate;
     }
@@ -32,4 +52,4 @@ const parseSalesQuery = (req, res, next) => {
   }
 };
 
-export { parseSalesQuery };
+export { parseSalesQuery, parseDateQuery };

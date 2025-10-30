@@ -11,11 +11,23 @@ class ExpenseRepository {
         });
     }
 
-    async getExpenses(shopId) {
-        return this.prisma.expense.findMany({
-            where: {
-                shopId,
-            },
+    async getExpenses({ shopId, employeeId, startDate, endDate, page, limit }) {
+        const where = {
+            ...(shopId && { shopId }),
+            ...(employeeId && { processedById: employeeId }),
+            ...(startDate && endDate && {
+                date: {
+                    gte: startDate,
+                    lte: endDate,
+                },
+            }),
+        };
+
+        const totalCount = await this.prisma.expense.count({ where });
+        const totalPages = Math.ceil(totalCount / limit);
+
+        const expenses = await this.prisma.expense.findMany({
+            where,
             include: {
                 actors: {
                     select: {
@@ -23,7 +35,24 @@ class ExpenseRepository {
                     },
                 },
             },
+            skip: (page - 1) * limit,
+            take: limit,
         });
+
+        const aggregation = await this.prisma.expense.aggregate({
+            where,
+            _sum: {
+                amount: true,
+            },
+        });
+
+        return {
+            expenses,
+            totalCount,
+            totalPages,
+            currentPage: page,
+            totalAmount: aggregation._sum.amount || 0,
+        };
     }
 }
 

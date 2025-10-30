@@ -31,11 +31,20 @@ const handleCreateSalaryPayment = async (req, res, next) => {
 
 const handleGetSalaryPayments = async (req, res, next) => {
   try {
-    if (!checkRole(req.user.role, ['manager', 'superuser'])) {
-      throw new APIError("Not authorized", STATUS_CODE.UNAUTHORIZED, "You are not authorized to view salary payments.");
+    const { user } = req;
+    const { page = 1, limit = 10, employeeId } = req.query;
+    const { startDate, endDate } = req.dateQuery;
+
+    // Authorization Check
+    if (employeeId) {
+      const requestedEmployeeId = parseInt(employeeId, 10);
+      if (!checkRole(user.role, ['manager', 'superuser']) && user.id !== requestedEmployeeId) {
+        throw new APIError("Forbidden", STATUS_CODE.FORBIDDEN, "You are not authorized to view this employee's salary payments.");
+      }
+    } else if (!checkRole(user.role, ['manager', 'superuser'])) {
+      throw new APIError("Forbidden", STATUS_CODE.FORBIDDEN, "You are not authorized to view salary payments.");
     }
 
-    const { page = 1, limit = 10, startDate, endDate, employeeId } = req.query;
     const options = {
       page: parseInt(page, 10),
       limit: parseInt(limit, 10),

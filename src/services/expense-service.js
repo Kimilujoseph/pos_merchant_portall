@@ -22,8 +22,8 @@ class ExpenseService {
         return this.repository.createExpense(expenseData);
     }
 
-    async getExpenses(shopId) {
-        return this.repository.getExpenses(shopId);
+    async getExpenses(options) {
+        return this.repository.getExpenses(options);
     }
 }
 
