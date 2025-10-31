@@ -25,12 +25,13 @@ class FinancialReportingRepository {
     }
   }
 
-  async getCurrentDaySales(date) {
+  async getLiveSales({ startDate, endDate }) {
     try {
       const mobileSales = prisma.mobilesales.aggregate({
         where: {
           createdAt: {
-            gte: date,
+            gte: startDate,
+            lte: endDate,
           },
         },
         _sum: {
@@ -43,7 +44,8 @@ class FinancialReportingRepository {
       const accessorySales = prisma.accessorysales.aggregate({
         where: {
           createdAt: {
-            gte: date,
+            gte: startDate,
+            lte: endDate,
           },
         },
         _sum: {
@@ -61,7 +63,7 @@ class FinancialReportingRepository {
         totalCommission: (mobileResult._sum.commission || 0) + (accessoryResult._sum.commission || 0),
       };
     } catch (err) {
-      throw new APIError("Database Error", STATUS_CODE.INTERNAL_ERROR, "Could not fetch current day sales.");
+      throw new APIError("Database Error", STATUS_CODE.INTERNAL_ERROR, "Could not fetch live sales.");
     }
   }
 
@@ -92,9 +94,9 @@ class FinancialReportingRepository {
             gte: startDate,
             lte: endDate,
           },
-          status: {
-            not: "VOID"
-          }
+          // status: {
+          //   not: "VOID"
+          // }
         },
         _sum: {
           amount: true,

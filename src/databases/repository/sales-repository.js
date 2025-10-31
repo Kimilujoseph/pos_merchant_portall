@@ -68,7 +68,7 @@ class Sales {
           "sales not found"
         );
       }
-      console.log("@@", sales);
+      //console.log("@@", sales);
       return sales;
     } catch (err) {
       if (err instanceof APIError) {
@@ -189,11 +189,14 @@ class Sales {
             soldPrice: true,
             profit: true,
             commission: true,
+            commissionPaid: true,
             financeAmount: true,
           },
           _count: true,
         }),
       ]);
+      console.log("@@@@results", totals._sum.commissionPaid);
+      console.log("@@@@results", totals._sum.commission);
       const transformSale = (sale) => ({
         ...sale,
         productDetails:
@@ -213,6 +216,7 @@ class Sales {
           totalSales: Number(totals._sum.soldPrice) || 0,
           totalProfit: Number(totals._sum.profit) || 0,
           totalCommission: Number(totals._sum.commission) || 0,
+          totalCommissionPaid: Number(totals._sum.commissionPaid) || 0,
           totalItems: Number(totals._count) || 0,
           totalFinanceAmount: Number(totals._sum.financeAmount) || 0,
         },
@@ -352,6 +356,7 @@ class Sales {
           soldPrice: true,
           profit: true,
           commission: true,
+          commissionPaid: true,
           financeAmount: true,
         },
         _count: true,
@@ -377,6 +382,7 @@ class Sales {
           totalSales: Number(totals._sum.soldPrice) || 0,
           totalProfit: Number(totals._sum.profit) || 0,
           totalCommission: Number(totals._sum.commission) || 0,
+          totalCommissionPaid: Number(totals._sum.commissionPaid) || 0,
           totalItems: Number(totals._count) || 0,
           totalFinanceAmount: Number(totals._sum.financeAmount) || 0,
         },

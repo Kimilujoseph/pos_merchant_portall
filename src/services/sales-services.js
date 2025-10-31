@@ -242,7 +242,7 @@ class salesmanagment {
     });
 
 
-    let todaysTotals = { totalRevenue: 0, grossProfit: 0, totalCommission: 0, totalItems: 0, totalFinanceAmount: 0 };
+    let todaysTotals = { totalRevenue: 0, grossProfit: 0, totalCommission: 0, totalCommissionPaid: 0, totalItems: 0, totalFinanceAmount: 0 };
     if (parsedEndDate >= today) {
       const todaySalesDetails = {
         startDate: today,
@@ -261,12 +261,13 @@ class salesmanagment {
         this.sales.findSales({ ...todaySalesDetails, salesTable: 'accessorysales' }),
       ]);
 
-      //console.log(mobileSales)
+      //ssconsole.log(accessorySales)
 
       todaysTotals = {
         totalRevenue: (mobileSales.totals.totalSales || 0) + (accessorySales.totals.totalSales || 0),
         grossProfit: (mobileSales.totals.totalProfit || 0) + (accessorySales.totals.totalProfit || 0),
         totalCommission: (mobileSales.totals.totalCommission || 0) + (accessorySales.totals.totalCommission || 0),
+        totalCommissionPaid: (mobileSales.totals.totalCommissionPaid || 0) + (accessorySales.totals.totalCommissionPaid || 0),
         totalItems: (mobileSales.totals.totalItems || 0) + (accessorySales.totals.totalItems || 0),
         totalFinanceAmount: (mobileSales.totals.financeAmount || 0) + (accessorySales.totals.financeAmount || 0),
       };
@@ -304,6 +305,7 @@ class salesmanagment {
       totalSales: (historicalTotals.totalRevenue || 0) + (todaysTotals.totalRevenue || 0),
       totalProfit: (historicalTotals.grossProfit || 0) + (todaysTotals.grossProfit || 0),
       totalCommission: (historicalTotals.totalCommission || 0) + (todaysTotals.totalCommission || 0),
+      totalCommissionPaid: (historicalTotals.totalCommissionPaid || 0) + (todaysTotals.totalCommissionPaid || 0),
       totalFinanceAmount: (historicalTotals.totalFinanceAmount || 0) + (todaysTotals.totalFinanceAmount || 0),
     };
 
@@ -374,7 +376,7 @@ class salesmanagment {
   async updateFinanceStatus({ saleType, saleId, status }) {
     try {
       const salesTable = saleType === 'mobile' ? 'mobilesales' : 'accessorysales';
-      
+
       if (!['paid', 'pending', 'overdue'].includes(status)) {
         throw new APIError("Bad Request", STATUS_CODE.BAD_REQUEST, "Invalid status provided.");
       }

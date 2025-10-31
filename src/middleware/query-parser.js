@@ -39,7 +39,7 @@ const parseSalesQuery = (req, res, next) => {
       req.salesQuery.startDate = new Date(queryStartDate);
       req.salesQuery.endDate = new Date(queryEndDate);
     } else {
-      req.salesQuery.period = date ? 'day' : period || 'year';
+      req.salesQuery.period = date ? 'day' : period || 'week';
       const [startDate, endDate] = getDateRange(req.salesQuery.period, date).map((m) => m.toDate());
       req.salesQuery.startDate = startDate;
       req.salesQuery.endDate = endDate;

@@ -26,7 +26,8 @@ class FinancialReportingService {
       }
 
       if (end >= today) {
-        todayData = await this.repository.getCurrentDaySales(today);
+        const liveStartDate = start > today ? start : today;
+        todayData = await this.repository.getLiveSales({ startDate: liveStartDate, endDate: end });
       }
 
       const grossRevenue = Number(historicalData._sum.totalRevenue || 0) + Number(todayData.totalRevenue);

@@ -53,7 +53,7 @@ const handleGetSales = async (req, res, next) => {
 
     const finalReport = Array.isArray(report) ? report[0] : report;
     const { sales, analytics } = finalReport;
-
+    //console.log("@@@@", sales)
     handleResponse({
       res,
       message: "Sales data retrieved successfully",
@@ -64,6 +64,7 @@ const handleGetSales = async (req, res, next) => {
         totalSales: sales?.totalSales || 0,
         totalProfit: sales?.totalProfit || 0,
         totalCommission: sales?.totalCommission || 0,
+        ///totalCommissionPaid: sales?.totalCommissionPaid || 0,
         totalfinancePending: sales?.financeSales || 0,
         totalPages: sales?.totalPages || 1,
         currentPage: sales?.currentPage || 1,

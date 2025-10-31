@@ -31,6 +31,56 @@ class CommissionRepository {
             actors_CommissionPayment_processedByIdToactors: {
               select: { id: true, name: true, email: true },
             },
+            CommissionPaymentsOnMobileSales: {
+              include: {
+                mobilesales: {
+                  select: {
+                    id: true,
+                    quantity: true,
+                    soldPrice: true,
+                    profit: true,
+                    commission: true,
+                    createdAt: true,
+                    mobiles: {
+                      select: {
+                        IMEI: true,
+                        storage: true,
+                        color: true,
+                        categories: {
+                          select: {
+                            itemName: true
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            CommissionPaymentsOnAccessorySales: {
+              include: {
+                accessorysales: {
+                  select: {
+                    id: true,
+                    quantity: true,
+                    soldPrice: true,
+                    profit: true,
+                    commission: true,
+                    createdAt: true,
+                    accessories: {
+                      select: {
+                        color: true,
+                        categories: {
+                          select: {
+                            itemName: true
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
           },
         }),
         prisma.commissionPayment.count({ where: whereClause }),
@@ -68,12 +118,39 @@ class CommissionRepository {
         const {
           actors_CommissionPayment_sellerIdToactors,
           actors_CommissionPayment_processedByIdToactors,
+          CommissionPaymentsOnMobileSales,
+          CommissionPaymentsOnAccessorySales,
           ...rest
         } = p;
+        
+        const mobileSales = CommissionPaymentsOnMobileSales.map(s => {
+            const { mobiles, ...saleData } = s.mobilesales;
+            return {
+                ...saleData,
+                itemName: mobiles.categories.itemName,
+                IMEI: mobiles.IMEI,
+                storage: mobiles.storage,
+                color: mobiles.color,
+            };
+        });
+
+        const accessorySales = CommissionPaymentsOnAccessorySales.map(s => {
+            const { accessories, ...saleData } = s.accessorysales;
+            return {
+                ...saleData,
+                itemName: accessories.categories.itemName,
+                color: accessories.color,
+            };
+        });
+
         return {
           ...rest,
           seller: actors_CommissionPayment_sellerIdToactors,
           processedBy: actors_CommissionPayment_processedByIdToactors,
+          sales: {
+            mobileSales,
+            accessorySales,
+          }
         };
       });
 

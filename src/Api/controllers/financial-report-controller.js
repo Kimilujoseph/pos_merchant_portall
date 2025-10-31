@@ -6,15 +6,7 @@ const financialReportingService = new FinancialReportingService();
 
 const handleGetFinancialSummary = async (req, res, next) => {
   try {
-    const { startDate, endDate } = req.query;
-
-    if (!startDate || !endDate) {
-      throw new APIError(
-        "Missing Parameters",
-        STATUS_CODE.BAD_REQUEST,
-        "Both startDate and endDate are required query parameters."
-      );
-    }
+    const { startDate, endDate } = req.dateQuery;
 
     const summary = await financialReportingService.generateFinancialSummary({ startDate, endDate });
 
