@@ -81,14 +81,16 @@ class Sales {
       );
     }
   }
-  async findSales({ salesTable, startDate, endDate, page, limit, shopId, categoryId, financerId, financeStatus }) {
+  async findSales({ salesTable, startDate, endDate, page, limit, shopId, categoryId, userId, financerId, financeStatus }) {
     try {
       const salesModel = prisma[salesTable];
       const skip = (page - 1) * limit;
       const whereClause = {
         createdAt: { gte: startDate, lte: endDate },
       };
-
+      if (userId) {
+        whereClause.sellerId = userId
+      }
       if (shopId) {
         whereClause.shopID = shopId;
       }
@@ -374,7 +376,7 @@ class Sales {
           financer: sale.Financer?.name || "N/A",
         },
       });
-
+      console.log("total profit", totals._sum.profit)
       return {
         data: results.map(transformSale),
         totals: {

@@ -241,7 +241,7 @@ class salesmanagment {
       financeStatus,
     });
 
-
+    //console.log("historical  sales data", historicalTotals)
     let todaysTotals = { totalRevenue: 0, grossProfit: 0, totalCommission: 0, totalCommissionPaid: 0, totalItems: 0, totalFinanceAmount: 0 };
     if (parsedEndDate >= today) {
       const todaySalesDetails = {
@@ -261,7 +261,8 @@ class salesmanagment {
         this.sales.findSales({ ...todaySalesDetails, salesTable: 'accessorysales' }),
       ]);
 
-      //ssconsole.log(accessorySales)
+      // console.log("3433434544545", accessorySales)
+      // console.log("3433434544mobile545", mobileSales)
 
       todaysTotals = {
         totalRevenue: (mobileSales.totals.totalSales || 0) + (accessorySales.totals.totalSales || 0),

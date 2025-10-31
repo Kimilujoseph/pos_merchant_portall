@@ -11,8 +11,8 @@ class FinancialReportingService {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      let historicalData = { _sum: { totalRevenue: 0, grossProfit: 0, totalCommission: 0 } };
-      let todayData = { totalRevenue: 0, grossProfit: 0, totalCommission: 0 };
+      let historicalData = { _sum: { totalRevenue: 0, grossProfit: 0, totalCommission: 0, totalCostOfGoods: 0 } };
+      let todayData = { totalRevenue: 0, grossProfit: 0, totalCommission: 0, costOfGoodsSold: 0 };
 
       const start = new Date(startDate);
       const end = new Date(endDate);
@@ -24,13 +24,14 @@ class FinancialReportingService {
           endDate: historicalEndDate,
         });
       }
-
+      console.log("historical sales data", historicalData)
       if (end >= today) {
         const liveStartDate = start > today ? start : today;
         todayData = await this.repository.getLiveSales({ startDate: liveStartDate, endDate: end });
       }
-
+      console.log("sales today sales data", todayData)
       const grossRevenue = Number(historicalData._sum.totalRevenue || 0) + Number(todayData.totalRevenue);
+
       const grossProfit = Number(historicalData._sum.grossProfit || 0) + Number(todayData.grossProfit);
       const accruedCommission = Number(historicalData._sum.totalCommission || 0) + Number(todayData.totalCommission);
 
@@ -54,11 +55,13 @@ class FinancialReportingService {
         operatingExpenses[category] = amount;
         totalOtherExpenses += amount;
       });
-      
+
       const totalOperatingExpenses = paidCommissions + paidSalaries + totalOtherExpenses;
       const netOperatingIncome = grossProfit - totalOperatingExpenses;
-      
-      const costOfGoodsSold = grossRevenue - grossProfit;
+
+      const costOfGoodsSold =
+        Number(historicalData._sum.totalCostOfGoods || 0) +
+        Number(todayData.costOfGoodsSold);
 
       return {
         reportPeriod: {
@@ -67,7 +70,7 @@ class FinancialReportingService {
         },
         incomeStatement: {
           grossRevenue,
-          costOfGoodsSold,
+          costOfGoodsSold: Number(costOfGoodsSold),
           grossProfit,
           accruedCommission,
           operatingExpenses: {

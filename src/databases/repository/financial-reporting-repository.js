@@ -18,6 +18,7 @@ class FinancialReportingRepository {
           totalRevenue: true,
           grossProfit: true,
           totalCommission: true,
+          totalCostOfGoods: true,
         },
       });
     } catch (err) {
@@ -57,10 +58,13 @@ class FinancialReportingRepository {
 
       const [mobileResult, accessoryResult] = await Promise.all([mobileSales, accessorySales]);
 
+      const totalRevenue = Number(mobileResult._sum.soldPrice || 0) + Number(accessoryResult._sum.soldPrice || 0);
+      const grossProfit = Number(mobileResult._sum.profit || 0) + Number(accessoryResult._sum.profit || 0);
       return {
-        totalRevenue: (mobileResult._sum.soldPrice || 0) + (accessoryResult._sum.soldPrice || 0),
-        grossProfit: (mobileResult._sum.profit || 0) + (accessoryResult._sum.profit || 0),
+        totalRevenue,
+        grossProfit,
         totalCommission: (mobileResult._sum.commission || 0) + (accessoryResult._sum.commission || 0),
+        costOfGoodsSold: totalRevenue - grossProfit,
       };
     } catch (err) {
       throw new APIError("Database Error", STATUS_CODE.INTERNAL_ERROR, "Could not fetch live sales.");

@@ -50,10 +50,10 @@ const handleGetSales = async (req, res, next) => {
     if (!report || (Array.isArray(report) && report.length === 0)) {
       throw new APIError("No sales found", STATUS_CODE.NOT_FOUND, "No sales found for the given criteria.");
     }
-
+    //console.log("returned report",report )
     const finalReport = Array.isArray(report) ? report[0] : report;
     const { sales, analytics } = finalReport;
-    //console.log("@@@@", sales)
+
     handleResponse({
       res,
       message: "Sales data retrieved successfully",
