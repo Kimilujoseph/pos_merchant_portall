@@ -195,8 +195,7 @@ class Sales {
           _count: true,
         }),
       ]);
-      console.log("@@@@results", totals._sum.commissionPaid);
-      console.log("@@@@results", totals._sum.commission);
+
       const transformSale = (sale) => ({
         ...sale,
         productDetails:

@@ -267,9 +267,9 @@ class salesmanagment {
         totalRevenue: (mobileSales.totals.totalSales || 0) + (accessorySales.totals.totalSales || 0),
         grossProfit: (mobileSales.totals.totalProfit || 0) + (accessorySales.totals.totalProfit || 0),
         totalCommission: (mobileSales.totals.totalCommission || 0) + (accessorySales.totals.totalCommission || 0),
-        totalCommissionPaid: (mobileSales.totals.totalCommissionPaid || 0) + (accessorySales.totals.totalCommissionPaid || 0),
+        //totalCommissionPaid: (mobileSales.totals.totalCommissionPaid || 0) + (accessorySales.totals.totalCommissionPaid || 0),
         totalItems: (mobileSales.totals.totalItems || 0) + (accessorySales.totals.totalItems || 0),
-        totalFinanceAmount: (mobileSales.totals.financeAmount || 0) + (accessorySales.totals.financeAmount || 0),
+        //totalFinanceAmount: (mobileSales.totals.financeAmount || 0) + (accessorySales.totals.financeAmount || 0),
       };
     }
 
@@ -305,8 +305,8 @@ class salesmanagment {
       totalSales: (historicalTotals.totalRevenue || 0) + (todaysTotals.totalRevenue || 0),
       totalProfit: (historicalTotals.grossProfit || 0) + (todaysTotals.grossProfit || 0),
       totalCommission: (historicalTotals.totalCommission || 0) + (todaysTotals.totalCommission || 0),
-      totalCommissionPaid: (historicalTotals.totalCommissionPaid || 0) + (todaysTotals.totalCommissionPaid || 0),
-      totalFinanceAmount: (historicalTotals.totalFinanceAmount || 0) + (todaysTotals.totalFinanceAmount || 0),
+      //totalCommissionPaid: (historicalTotals.totalCommissionPaid || 0) + (todaysTotals.totalCommissionPaid || 0),
+      // totalFinanceAmount: (historicalTotals.totalfinanceAmount || 0) + (todaysTotals.totalFinanceAmount || 0),
     };
 
     return {
